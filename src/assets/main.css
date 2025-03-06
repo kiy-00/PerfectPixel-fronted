@@ -1,0 +1,36 @@
+@import './base.css';
+
+#app {
+  width: 100%;
+  max-width: 100%; /* 修改，去掉宽度限制 */
+  margin: 0; /* 修改，去掉自动居中 */
+  padding: 2rem;
+  font-weight: normal;
+}
+
+a,
+.green {
+  text-decoration: none;
+  color: hsla(160, 100%, 37%, 1);
+  transition: 0.4s;
+  padding: 3px;
+}
+
+@media (hover: hover) {
+  a:hover {
+    background-color: hsla(160, 100%, 37%, 0.2);
+  }
+}
+
+@media (min-width: 1024px) {
+  body {
+    display: block; /* 修改，去掉flex布局 */
+    /* 移除place-items: center; */
+  }
+
+  #app {
+    display: block; /* 修改，从网格布局改为块级布局 */
+    /* 移除grid-template-columns: 1fr 1fr; */
+    padding: 0 2rem;
+  }
+}
