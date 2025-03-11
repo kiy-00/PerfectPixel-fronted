@@ -38,69 +38,38 @@
 
       <!-- 注册表单 -->
       <form @submit.prevent="handleSubmit" class="space-y-4">
-        <!-- 用户名/邮箱输入框 -->
+        <!-- 用户名输入框 -->
         <div class="space-y-2">
-          <label
-            :for="registerMethod === 'username' ? 'username' : 'email'"
-            class="block text-sm font-medium text-neutral-dark"
-          >
-            {{ registerMethod === 'username' ? '用户名' : '邮箱' }}
-          </label>
+          <label for="username" class="block text-sm font-medium text-neutral-dark"> 用户名 </label>
           <div class="relative">
             <input
-              :type="registerMethod === 'username' ? 'text' : 'email'"
-              :id="registerMethod === 'username' ? 'username' : 'email'"
-              :name="registerMethod === 'username' ? 'username' : 'email'"
-              v-model="registerForm.identifier"
+              type="text"
+              id="username"
+              name="username"
+              v-model="registerForm.username"
               class="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-accent focus:border-green-accent bg-green-light bg-opacity-10"
-              :placeholder="registerMethod === 'username' ? '请输入用户名' : '请输入邮箱'"
+              placeholder="请输入用户名"
               required
             />
           </div>
-          <p v-if="registerMethod === 'username'" class="text-xs text-neutral-dark mt-1">
+          <p class="text-xs text-neutral-dark mt-1">
             用户名长度为4-20个字符，支持字母、数字、下划线
           </p>
         </div>
 
-        <!-- 手机号码输入框 -->
-        <div class="space-y-2">
-          <label for="phone" class="block text-sm font-medium text-neutral-dark"> 手机号码 </label>
+        <!-- 邮箱输入框 -->
+        <div class="space-y-2" v-if="registerMethod === 'email'">
+          <label for="email" class="block text-sm font-medium text-neutral-dark"> 邮箱 </label>
           <div class="relative">
             <input
-              type="tel"
-              id="phone"
-              name="phone"
-              v-model="registerForm.phone"
+              type="email"
+              id="email"
+              name="email"
+              v-model="registerForm.email"
               class="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-accent focus:border-green-accent bg-green-light bg-opacity-10"
-              placeholder="请输入手机号码"
+              placeholder="请输入邮箱"
               required
             />
-          </div>
-        </div>
-
-        <!-- 验证码 -->
-        <div class="space-y-2">
-          <label for="verificationCode" class="block text-sm font-medium text-neutral-dark">
-            验证码
-          </label>
-          <div class="flex space-x-2">
-            <input
-              type="text"
-              id="verificationCode"
-              name="verificationCode"
-              v-model="registerForm.verificationCode"
-              class="flex-1 px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-accent focus:border-green-accent bg-green-light bg-opacity-10"
-              placeholder="请输入验证码"
-              required
-            />
-            <button
-              type="button"
-              class="px-4 py-2 border border-primary rounded-md text-primary hover:bg-green-light focus:outline-none focus:ring-2 focus:ring-green-accent"
-              :disabled="cooldown > 0"
-              @click="sendVerificationCode"
-            >
-              {{ cooldown > 0 ? `${cooldown}秒后重试` : '获取验证码' }}
-            </button>
           </div>
         </div>
 
@@ -170,12 +139,19 @@
           </label>
         </div>
 
+        <!-- 错误消息 -->
+        <div v-if="errorMessage" class="mt-2 text-sm text-error text-center">
+          {{ errorMessage }}
+        </div>
+
         <!-- 注册按钮 -->
         <button
           type="submit"
           class="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-white bg-primary hover:bg-green-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-accent transition duration-200"
+          :disabled="isLoading"
         >
-          立即注册
+          <span v-if="isLoading">注册中...</span>
+          <span v-else>立即注册</span>
         </button>
       </form>
 
@@ -183,7 +159,13 @@
       <div class="text-center mt-6">
         <p class="text-sm text-neutral-dark">
           已有账号?
-          <a @click.prevent="goLogin">立即登录</a>
+          <a
+            href="#"
+            @click.prevent="goLogin"
+            class="font-medium text-primary hover:text-green-dark"
+          >
+            立即登录
+          </a>
         </p>
       </div>
     </div>
@@ -193,6 +175,7 @@
 <script lang="ts">
 import { defineComponent, ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
+import { userAPI } from '../services/apiService'
 
 export default defineComponent({
   name: 'RegisterView',
@@ -206,51 +189,160 @@ export default defineComponent({
     const showPassword = ref(false)
     const showConfirmPassword = ref(false)
 
-    // 验证码冷却时间
-    const cooldown = ref(0)
+    // 状态管理
+    const isLoading = ref(false)
+    const errorMessage = ref('')
 
     // 注册表单数据
     const registerForm = reactive({
-      identifier: '', // 用户名或邮箱
-      phone: '',
-      verificationCode: '',
+      username: '',
+      email: '',
       password: '',
       confirmPassword: '',
       agreement: false,
     })
 
-    // 发送验证码
-    const sendVerificationCode = () => {
-      // 模拟发送验证码
-      console.log('向手机号码发送验证码:', registerForm.phone)
+    // 表单验证函数
+    const validateForm = () => {
+      // 重置错误消息
+      errorMessage.value = ''
 
-      // 设置冷却时间
-      cooldown.value = 60
-      const timer = setInterval(() => {
-        cooldown.value--
-        if (cooldown.value <= 0) {
-          clearInterval(timer)
+      // 用户名验证
+      if (!registerForm.username) {
+        errorMessage.value = '请输入用户名'
+        return false
+      }
+
+      const usernameRegex = /^[a-zA-Z0-9_]{4,20}$/
+      if (!usernameRegex.test(registerForm.username)) {
+        errorMessage.value = '用户名格式不正确，长度为4-20个字符，支持字母、数字、下划线'
+        return false
+      }
+
+      // 邮箱验证（如果是邮箱注册）
+      if (registerMethod.value === 'email') {
+        if (!registerForm.email) {
+          errorMessage.value = '请输入邮箱'
+          return false
         }
-      }, 1000)
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        if (!emailRegex.test(registerForm.email)) {
+          errorMessage.value = '邮箱格式不正确'
+          return false
+        }
+      }
+
+      // 密码验证
+      if (!registerForm.password) {
+        errorMessage.value = '请输入密码'
+        return false
+      }
+
+      const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,20}$/
+      if (!passwordRegex.test(registerForm.password)) {
+        errorMessage.value = '密码格式不正确，长度为8-20个字符，必须包含字母和数字'
+        return false
+      }
+
+      // 确认密码验证
+      if (registerForm.password !== registerForm.confirmPassword) {
+        errorMessage.value = '两次输入的密码不一致'
+        return false
+      }
+
+      // 用户协议验证
+      if (!registerForm.agreement) {
+        errorMessage.value = '请阅读并同意用户协议和隐私政策'
+        return false
+      }
+
+      return true
     }
 
     // 提交处理函数
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
       // 表单验证
-      if (registerForm.password !== registerForm.confirmPassword) {
-        alert('两次输入的密码不一致')
+      if (!validateForm()) {
         return
       }
 
-      console.log('注册信息:', {
-        registerMethod: registerMethod.value,
-        identifier: registerForm.identifier,
-        phone: registerForm.phone,
-        password: registerForm.password,
-        agreement: registerForm.agreement,
-      })
+      try {
+        isLoading.value = true
 
-      // 这里添加注册逻辑
+        // 准备请求数据
+        const registerData = {
+          Username: registerForm.username,
+          Email: registerForm.email || `${registerForm.username}@example.com`, // 如果没有邮箱，使用默认值
+          Password: registerForm.password,
+          FirstName: '', // 可选字段，设置为默认值
+          LastName: '', // 可选字段，设置为默认值
+          PhoneNumber: '', // 可选字段，设置为默认值
+          Roles: ['Regular'], // 默认注册为普通用户
+        }
+
+        console.log('正在发送注册请求:', {
+          url: import.meta.env.VITE_API_BASE_URL + '/User/register',
+          data: { ...registerData, Password: '******' }, // 日志中隐藏密码
+        })
+
+        // 发送注册请求
+        const response = await userAPI.register(registerData)
+
+        console.log('注册成功:', response.data)
+
+        // 注册成功后自动登录
+        const loginData = {
+          UsernameOrEmail: registerForm.username,
+          Password: registerForm.password,
+        }
+
+        // 登录请求
+        const loginResponse = await userAPI.login(loginData.UsernameOrEmail, loginData.Password)
+
+        // 存储用户信息和令牌
+        const userData = {
+          userId: loginResponse.data.UserId,
+          username: loginResponse.data.Username,
+          email: loginResponse.data.Email,
+          userType: loginResponse.data.UserType,
+          token: loginResponse.data.Token,
+        }
+
+        // 存储在sessionStorage中
+        sessionStorage.setItem('user', JSON.stringify(userData))
+        sessionStorage.setItem('token', loginResponse.data.Token)
+
+        // 跳转到首页
+        router.push('/home')
+      } catch (error: any) {
+        console.error('注册失败:', error)
+
+        // 处理不同类型的错误
+        if (error.response) {
+          // 服务器返回了错误状态码
+          const { status, data } = error.response
+
+          switch (status) {
+            case 400:
+              errorMessage.value = data.message || '注册参数错误'
+              break
+            case 409:
+              errorMessage.value = '用户名或邮箱已存在'
+              break
+            default:
+              errorMessage.value = '注册失败，请稍后再试'
+          }
+        } else if (error.request) {
+          // 请求发送了但没有收到响应
+          errorMessage.value = '无法连接到服务器，请检查网络连接'
+        } else {
+          // 设置请求时发生了错误
+          errorMessage.value = '注册过程中发生错误'
+        }
+      } finally {
+        isLoading.value = false
+      }
     }
 
     const goLogin = () => router.push('/login')
@@ -259,11 +351,11 @@ export default defineComponent({
       registerMethod,
       showPassword,
       showConfirmPassword,
-      cooldown,
       registerForm,
-      sendVerificationCode,
       handleSubmit,
       goLogin,
+      isLoading,
+      errorMessage,
     }
   },
 })

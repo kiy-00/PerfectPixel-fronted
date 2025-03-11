@@ -166,7 +166,7 @@
     <!-- 中间编辑区域 -->
     <div class="flex-1 flex flex-col p-6 overflow-hidden">
       <!-- 图片对比区域 -->
-      <div class="flex-1 flex flex-col items-center justify-center relative">
+      <div class="flex-1 flex flex-col items-center justify-center relative overflow-auto">
         <div v-if="!imageUrl" class="text-center">
           <div class="mb-4">
             <svg
@@ -187,82 +187,95 @@
           <p class="text-neutral-dark">请上传需要修图的图片</p>
         </div>
 
-        <div v-else class="w-full h-full flex justify-center items-center">
-          <div class="relative max-w-full max-h-full">
-            <!-- 原始图片 -->
-            <img
-              :src="imageUrl"
-              alt="原始图片"
-              ref="originalImage"
-              class="max-w-full max-h-full object-contain"
-              v-show="!showProcessed || compareMode"
-              :style="compareMode ? 'clip-path: inset(0 50% 0 0);' : ''"
-            />
+        <div
+          v-else
+          class="relative max-w-full max-h-[calc(100vh-160px)] flex justify-center items-center"
+        >
+          <!-- 原始图片 -->
+          <img
+            :src="imageUrl"
+            alt="原始图片"
+            ref="originalImage"
+            class="max-w-full max-h-full object-contain"
+            :style="{ display: showProcessed ? 'none' : 'block' }"
+            @load="onImageLoad"
+          />
 
-            <!-- 处理后的图片 -->
-            <img
-              :src="processedImageUrl || imageUrl"
-              alt="处理后图片"
-              ref="processedImage"
-              class="max-w-full max-h-full object-contain absolute top-0 left-0"
-              v-show="showProcessed"
-              :style="compareMode ? 'clip-path: inset(0 0 0 50%);' : ''"
-            />
+          <!-- 处理后的图片 -->
+          <img
+            :src="processedImageUrl"
+            alt="处理后图片"
+            ref="processedImage"
+            class="max-w-full max-h-full object-contain"
+            :style="{
+              display: showProcessed && processedImageUrl ? 'block' : 'none',
+              border: debugMode ? '2px solid red' : 'none',
+            }"
+          />
 
-            <!-- 裁剪区域 -->
+          <!-- Debug message -->
+          <div
+            v-if="showProcessed && !processedImageUrl"
+            class="absolute top-0 left-0 bg-red-500 text-white p-2"
+          >
+            无处理后的图片 (debug)
+          </div>
+
+          <!-- 裁剪区域 -->
+          <div
+            v-if="isCropping && imageUrl"
+            ref="cropBox"
+            class="absolute border-2 border-primary cursor-move"
+            :style="{
+              left: cropArea.left + 'px',
+              top: cropArea.top + 'px',
+              width: cropArea.width + 'px',
+              height: cropArea.height + 'px',
+            }"
+            @mousedown="startDragCrop($event)"
+          >
+            <!-- 裁剪区域的拖拽点 -->
             <div
-              v-if="isCropping && imageUrl"
-              ref="cropBox"
-              class="absolute border-2 border-primary cursor-move"
-              :style="{
-                left: cropArea.left + 'px',
-                top: cropArea.top + 'px',
-                width: cropArea.width + 'px',
-                height: cropArea.height + 'px',
-              }"
-              @mousedown="startDragCrop($event)"
-            >
-              <!-- 裁剪区域的拖拽点 -->
-              <div
-                class="absolute -m-1 w-3 h-3 bg-white border-2 border-primary rounded-full right-0 bottom-0 cursor-se-resize"
-                @mousedown.stop="startResizeCrop($event, 'se')"
-              ></div>
-              <div
-                class="absolute -m-1 w-3 h-3 bg-white border-2 border-primary rounded-full left-0 bottom-0 cursor-sw-resize"
-                @mousedown.stop="startResizeCrop($event, 'sw')"
-              ></div>
-              <div
-                class="absolute -m-1 w-3 h-3 bg-white border-2 border-primary rounded-full right-0 top-0 cursor-ne-resize"
-                @mousedown.stop="startResizeCrop($event, 'ne')"
-              ></div>
-              <div
-                class="absolute -m-1 w-3 h-3 bg-white border-2 border-primary rounded-full left-0 top-0 cursor-nw-resize"
-                @mousedown.stop="startResizeCrop($event, 'nw')"
-              ></div>
-            </div>
-
-            <!-- 比较模式的分割线 -->
+              class="absolute -m-1 w-3 h-3 bg-white border-2 border-primary rounded-full right-0 bottom-0 cursor-se-resize"
+              @mousedown.stop="startResizeCrop($event, 'se')"
+            ></div>
             <div
-              v-if="compareMode"
-              class="absolute top-0 left-1/2 bottom-0 w-1 bg-white opacity-70 cursor-ew-resize"
-              @mousedown="startMoveSlider($event)"
+              class="absolute -m-1 w-3 h-3 bg-white border-2 border-primary rounded-full left-0 bottom-0 cursor-sw-resize"
+              @mousedown.stop="startResizeCrop($event, 'sw')"
+            ></div>
+            <div
+              class="absolute -m-1 w-3 h-3 bg-white border-2 border-primary rounded-full right-0 top-0 cursor-ne-resize"
+              @mousedown.stop="startResizeCrop($event, 'ne')"
+            ></div>
+            <div
+              class="absolute -m-1 w-3 h-3 bg-white border-2 border-primary rounded-full left-0 top-0 cursor-nw-resize"
+              @mousedown.stop="startResizeCrop($event, 'nw')"
             ></div>
           </div>
         </div>
       </div>
 
-      <!-- 对比按钮 -->
-      <div class="mt-4 flex justify-center" v-if="imageUrl">
+      <!-- 对比按钮 - 固定在底部 -->
+      <div class="mt-4 flex justify-center sticky bottom-4" v-if="imageUrl">
         <button
-          @click="toggleCompareMode"
+          @click="toggleProcessedView"
           :class="[
-            'px-4 py-2 rounded-md text-sm transition-colors',
-            compareMode
+            'px-4 py-2 rounded-md text-sm transition-colors shadow-md',
+            showProcessed
               ? 'bg-primary text-white'
               : 'border border-primary text-primary hover:bg-green-light hover:bg-opacity-10',
           ]"
         >
-          {{ compareMode ? '退出对比模式' : '前后对比' }}
+          {{ showProcessed ? '查看原图' : '查看处理后' }}
+        </button>
+
+        <!-- Debug button to help troubleshoot -->
+        <button
+          v-if="debugMode"
+          @click="forceCreateProcessed"
+          class="ml-2 px-4 py-2 bg-red-500 text-white rounded-md text-sm"
+        >
+          重新生成处理图
         </button>
       </div>
     </div>
@@ -321,7 +334,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, reactive, onMounted, onUnmounted, nextTick } from 'vue'
+import { defineComponent, ref, reactive, onMounted, onUnmounted, nextTick, watch } from 'vue'
 
 export default defineComponent({
   name: 'RetouchingView',
@@ -331,12 +344,9 @@ export default defineComponent({
     const processedImageUrl = ref('')
     const originalImage = ref<HTMLImageElement | null>(null)
     const processedImage = ref<HTMLImageElement | null>(null)
-    const showProcessed = ref(true)
-
-    // 比较模式
-    const compareMode = ref(false)
-    const sliderPosition = ref(50)
-    let isDraggingSlider = false
+    // 将这个修改成false
+    const showProcessed = ref(false)
+    const imageLoaded = ref(false)
 
     // 调整参数
     const brightness = ref(0)
@@ -384,6 +394,7 @@ export default defineComponent({
 
     // 文件上传处理
     const handleImageUpload = (event: Event) => {
+      console.log('handleImageUpload triggered')
       const input = event.target as HTMLInputElement
       if (input.files && input.files[0]) {
         const file = input.files[0]
@@ -392,12 +403,15 @@ export default defineComponent({
         reader.onload = (e: ProgressEvent<FileReader>) => {
           if (e.target && typeof e.target.result === 'string') {
             imageUrl.value = e.target.result
-            // 重置所有设置
+            processedImageUrl.value = ''
+            imageLoaded.value = false
+
+            // Force show the original image first
+            showProcessed.value = false
+            console.log('Image uploaded, showing original image')
+
+            // Reset all settings
             resetAllSettings()
-            // 初始处理图片
-            nextTick(() => {
-              applyFilters()
-            })
           }
         }
 
@@ -413,239 +427,261 @@ export default defineComponent({
 
     // 应用所有图像处理效果
     const applyFilters = () => {
-      if (!imageUrl.value || !originalImage.value) return
-
-      // 创建离屏 canvas
-      const canvas = document.createElement('canvas')
-      const ctx = canvas.getContext('2d')
-      if (!ctx) return
-
-      const img = originalImage.value
-      canvas.width = img.naturalWidth
-      canvas.height = img.naturalHeight
-
-      // 绘制原始图像
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-
-      // 应用亮度、对比度和饱和度调整
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-      const data = imageData.data
-
-      const brightnessValue = Number(brightness.value) / 100
-      const contrastValue = Number(contrast.value) / 100
-      const saturationValue = Number(saturation.value) / 100
-
-      for (let i = 0; i < data.length; i += 4) {
-        // 亮度调整
-        if (brightnessValue !== 0) {
-          data[i] += brightnessValue * 255
-          data[i + 1] += brightnessValue * 255
-          data[i + 2] += brightnessValue * 255
-        }
-
-        // 对比度调整
-        if (contrastValue !== 0) {
-          const factor = (259 * (contrastValue + 1)) / (255 * (259 - contrastValue))
-          data[i] = factor * (data[i] - 128) + 128
-          data[i + 1] = factor * (data[i + 1] - 128) + 128
-          data[i + 2] = factor * (data[i + 2] - 128) + 128
-        }
-
-        // 饱和度调整
-        if (saturationValue !== 0) {
-          const gray = 0.2989 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]
-          data[i] = Math.min(255, Math.max(0, data[i] + saturationValue * (data[i] - gray)))
-          data[i + 1] = Math.min(
-            255,
-            Math.max(0, data[i + 1] + saturationValue * (data[i + 1] - gray)),
-          )
-          data[i + 2] = Math.min(
-            255,
-            Math.max(0, data[i + 2] + saturationValue * (data[i + 2] - gray)),
-          )
-        }
+      if (!imageLoaded.value) {
+        console.log('图片尚未加载，跳过滤镜应用')
+        return
       }
 
-      ctx.putImageData(imageData, 0, 0)
+      console.log('应用过滤器...')
+      if (!imageUrl.value || !originalImage.value) {
+        console.error('缺少原始图片，无法应用滤镜')
+        return
+      }
 
-      // 应用锐化效果
-      if (Number(sharpness.value) > 0) {
-        const sharpnessValue = Number(sharpness.value) / 100
-        const tempCanvas = document.createElement('canvas')
-        const tempCtx = tempCanvas.getContext('2d')
-        if (tempCtx) {
-          tempCanvas.width = canvas.width
-          tempCanvas.height = canvas.height
+      try {
+        // 创建离屏 canvas
+        const canvas = document.createElement('canvas')
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return
 
-          // 绘制当前图像
-          tempCtx.drawImage(canvas, 0, 0)
+        const img = originalImage.value
+        canvas.width = img.naturalWidth
+        canvas.height = img.naturalHeight
 
-          // 应用锐化卷积核
-          const strength = 0.5 * sharpnessValue
-          const kernel = [
-            [0, -strength, 0],
-            [-strength, 1 + 4 * strength, -strength],
-            [0, -strength, 0],
-          ]
+        // 绘制原始图像
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
 
-          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-          const tempData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height)
-          const data = imageData.data
-          const tempDataArr = tempData.data
+        // 应用亮度、对比度和饱和度调整
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+        const data = imageData.data
 
-          // 应用卷积
-          for (let y = 1; y < canvas.height - 1; y++) {
-            for (let x = 1; x < canvas.width - 1; x++) {
-              const offset = (y * canvas.width + x) * 4
+        const brightnessValue = Number(brightness.value) / 100
+        const contrastValue = Number(contrast.value) / 100
+        const saturationValue = Number(saturation.value) / 100
 
-              for (let c = 0; c < 3; c++) {
-                let val = 0
-                for (let ky = -1; ky <= 1; ky++) {
-                  for (let kx = -1; kx <= 1; kx++) {
-                    const idx = ((y + ky) * canvas.width + (x + kx)) * 4 + c
-                    val += tempDataArr[idx] * kernel[ky + 1][kx + 1]
-                  }
-                }
-                data[offset + c] = Math.min(255, Math.max(0, val))
-              }
-            }
+        for (let i = 0; i < data.length; i += 4) {
+          // 亮度
+          if (brightnessValue !== 0) {
+            data[i] += brightnessValue * 255
+            data[i + 1] += brightnessValue * 255
+            data[i + 2] += brightnessValue * 255
           }
-
-          ctx.putImageData(imageData, 0, 0)
+          // 对比度 (简单公式示例)
+          if (contrastValue !== 0) {
+            const factor = (259 * (contrastValue + 1)) / (1 * (259 - contrastValue))
+            data[i] = factor * (data[i] - 128) + 128
+            data[i + 1] = factor * (data[i + 1] - 128) + 128
+            data[i + 2] = factor * (data[i + 2] - 128) + 128
+          }
+          // 饱和度 (简单示例)
+          if (saturationValue !== 0) {
+            const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]
+            data[i] += (data[i] - gray) * saturationValue
+            data[i + 1] += (data[i + 1] - gray) * saturationValue
+            data[i + 2] += (data[i + 2] - gray) * saturationValue
+          }
         }
-      }
 
-      // 应用滤镜效果
-      if (selectedFilter.value !== 'none') {
-        switch (selectedFilter.value) {
-          case 'warm':
-            ctx.globalCompositeOperation = 'source-over'
-            ctx.fillStyle = 'rgba(255, 150, 0, 0.15)'
-            ctx.fillRect(0, 0, canvas.width, canvas.height)
-            break
-          case 'cool':
-            ctx.globalCompositeOperation = 'source-over'
-            ctx.fillStyle = 'rgba(0, 150, 255, 0.15)'
-            ctx.fillRect(0, 0, canvas.width, canvas.height)
-            break
-          case 'vintage':
-            const vintageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-            const vintageDataArr = vintageData.data
-            for (let i = 0; i < vintageDataArr.length; i += 4) {
-              vintageDataArr[i] = vintageDataArr[i] * 1.2
-              vintageDataArr[i + 1] = vintageDataArr[i + 1] * 0.9
-              vintageDataArr[i + 2] = vintageDataArr[i + 2] * 0.8
-            }
-            ctx.putImageData(vintageData, 0, 0)
-            break
-          case 'grayscale':
-            const grayscaleData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-            const grayscaleDataArr = grayscaleData.data
-            for (let i = 0; i < grayscaleDataArr.length; i += 4) {
-              const avg =
-                (grayscaleDataArr[i] + grayscaleDataArr[i + 1] + grayscaleDataArr[i + 2]) / 3
-              grayscaleDataArr[i] = avg
-              grayscaleDataArr[i + 1] = avg
-              grayscaleDataArr[i + 2] = avg
-            }
-            ctx.putImageData(grayscaleData, 0, 0)
-            break
-          case 'sepia':
-            const sepiaData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-            const sepiaDataArr = sepiaData.data
-            for (let i = 0; i < sepiaDataArr.length; i += 4) {
-              const r = sepiaDataArr[i]
-              const g = sepiaDataArr[i + 1]
-              const b = sepiaDataArr[i + 2]
-              sepiaDataArr[i] = Math.min(255, r * 0.393 + g * 0.769 + b * 0.189)
-              sepiaDataArr[i + 1] = Math.min(255, r * 0.349 + g * 0.686 + b * 0.168)
-              sepiaDataArr[i + 2] = Math.min(255, r * 0.272 + g * 0.534 + b * 0.131)
-            }
-            ctx.putImageData(sepiaData, 0, 0)
-            break
-          case 'clarity':
-            // 清晰度增强 (类似于锐化但更平滑)
-            const clarityData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-            const originalData = new Uint8ClampedArray(clarityData.data)
-            const clarityDataArr = clarityData.data
+        ctx.putImageData(imageData, 0, 0)
 
+        // 应用锐化效果
+        if (Number(sharpness.value) > 0) {
+          const sharpnessValue = Number(sharpness.value) / 100
+          const tempCanvas = document.createElement('canvas')
+          const tempCtx = tempCanvas.getContext('2d')
+          if (tempCtx) {
+            tempCanvas.width = canvas.width
+            tempCanvas.height = canvas.height
+
+            // 绘制当前图像
+            tempCtx.drawImage(canvas, 0, 0)
+
+            // 应用锐化卷积核
+            const strength = 0.5 * sharpnessValue
+            const kernel = [
+              [0, -strength, 0],
+              [-strength, 1 + 4 * strength, -strength],
+              [0, -strength, 0],
+            ]
+
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+            const tempData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height)
+            const data = imageData.data
+            const tempDataArr = tempData.data
+
+            // 应用卷积
             for (let y = 1; y < canvas.height - 1; y++) {
               for (let x = 1; x < canvas.width - 1; x++) {
-                const idx = (y * canvas.width + x) * 4
+                const offset = (y * canvas.width + x) * 4
 
                 for (let c = 0; c < 3; c++) {
-                  const current = originalData[idx + c]
-                  const up = originalData[((y - 1) * canvas.width + x) * 4 + c]
-                  const down = originalData[((y + 1) * canvas.width + x) * 4 + c]
-                  const left = originalData[(y * canvas.width + (x - 1)) * 4 + c]
-                  const right = originalData[(y * canvas.width + (x + 1)) * 4 + c]
-
-                  const diff = current * 2 - (up + down + left + right) / 4
-                  clarityDataArr[idx + c] = Math.min(255, Math.max(0, current + diff * 0.3))
+                  let val = 0
+                  for (let ky = -1; ky <= 1; ky++) {
+                    for (let kx = -1; kx <= 1; kx++) {
+                      const idx = ((y + ky) * canvas.width + (x + kx)) * 4 + c
+                      val += tempDataArr[idx] * kernel[ky + 1][kx + 1]
+                    }
+                  }
+                  data[offset + c] = Math.min(255, Math.max(0, val))
                 }
               }
             }
 
-            ctx.putImageData(clarityData, 0, 0)
-            break
-          case 'vivid':
-            // 鲜艳效果 (增加对比度和饱和度)
-            const vividData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-            const vividDataArr = vividData.data
-
-            for (let i = 0; i < vividDataArr.length; i += 4) {
-              // 增加对比度
-              vividDataArr[i] = Math.min(255, Math.max(0, (vividDataArr[i] - 128) * 1.2 + 128))
-              vividDataArr[i + 1] = Math.min(
-                255,
-                Math.max(0, (vividDataArr[i + 1] - 128) * 1.2 + 128),
-              )
-              vividDataArr[i + 2] = Math.min(
-                255,
-                Math.max(0, (vividDataArr[i + 2] - 128) * 1.2 + 128),
-              )
-
-              // 增加饱和度
-              const avg = (vividDataArr[i] + vividDataArr[i + 1] + vividDataArr[i + 2]) / 3
-              vividDataArr[i] = Math.min(
-                255,
-                Math.max(0, vividDataArr[i] + (vividDataArr[i] - avg) * 0.3),
-              )
-              vividDataArr[i + 1] = Math.min(
-                255,
-                Math.max(0, vividDataArr[i + 1] + (vividDataArr[i + 1] - avg) * 0.3),
-              )
-              vividDataArr[i + 2] = Math.min(
-                255,
-                Math.max(0, vividDataArr[i + 2] + (vividDataArr[i + 2] - avg) * 0.3),
-              )
-            }
-
-            ctx.putImageData(vividData, 0, 0)
-            break
-          case 'dreamy':
-            // 梦幻效果 (增加曝光和柔光)
-            ctx.globalCompositeOperation = 'source-over'
-
-            // 绘制轻微的发光效果
-            ctx.shadowColor = 'rgba(255, 255, 255, 0.3)'
-            ctx.shadowBlur = 10
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-
-            // 增加淡紫色调
-            ctx.globalCompositeOperation = 'overlay'
-            ctx.fillStyle = 'rgba(180, 180, 255, 0.15)'
-            ctx.fillRect(0, 0, canvas.width, canvas.height)
-
-            // 重置合成模式
-            ctx.globalCompositeOperation = 'source-over'
-            break
+            ctx.putImageData(imageData, 0, 0)
+          }
         }
-      }
 
-      // 转换为URL
-      processedImageUrl.value = canvas.toDataURL('image/jpeg')
-      showProcessed.value = true
+        // 应用滤镜效果
+        if (selectedFilter.value !== 'none') {
+          switch (selectedFilter.value) {
+            case 'warm':
+              ctx.globalCompositeOperation = 'source-over'
+              ctx.fillStyle = 'rgba(255, 150, 0, 0.15)'
+              ctx.fillRect(0, 0, canvas.width, canvas.height)
+              break
+            case 'cool':
+              ctx.globalCompositeOperation = 'source-over'
+              ctx.fillStyle = 'rgba(0, 150, 255, 0.15)'
+              ctx.fillRect(0, 0, canvas.width, canvas.height)
+              break
+            case 'vintage':
+              const vintageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+              const vintageDataArr = vintageData.data
+              for (let i = 0; i < vintageDataArr.length; i += 4) {
+                vintageDataArr[i] = vintageDataArr[i] * 1.2
+                vintageDataArr[i + 1] = vintageDataArr[i + 1] * 0.9
+                vintageDataArr[i + 2] = vintageDataArr[i + 2] * 0.8
+              }
+              ctx.putImageData(vintageData, 0, 0)
+              break
+            case 'grayscale':
+              const grayscaleData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+              const grayscaleDataArr = grayscaleData.data
+              for (let i = 0; i < grayscaleDataArr.length; i += 4) {
+                const avg =
+                  (grayscaleDataArr[i] + grayscaleDataArr[i + 1] + grayscaleDataArr[i + 2]) / 3
+                grayscaleDataArr[i] = avg
+                grayscaleDataArr[i + 1] = avg
+                grayscaleDataArr[i + 2] = avg
+              }
+              ctx.putImageData(grayscaleData, 0, 0)
+              break
+            case 'sepia':
+              const sepiaData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+              const sepiaDataArr = sepiaData.data
+              for (let i = 0; i < sepiaDataArr.length; i += 4) {
+                const r = sepiaDataArr[i]
+                const g = sepiaDataArr[i + 1]
+                const b = sepiaDataArr[i + 2]
+                sepiaDataArr[i] = Math.min(255, r * 0.393 + g * 0.769 + b * 0.189)
+                sepiaDataArr[i + 1] = Math.min(255, r * 0.349 + g * 0.686 + b * 0.168)
+                sepiaDataArr[i + 2] = Math.min(255, r * 0.272 + g * 0.534 + b * 0.131)
+              }
+              ctx.putImageData(sepiaData, 0, 0)
+              break
+            case 'clarity':
+              // 清晰度增强 (类似于锐化但更平滑)
+              const clarityData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+              const originalData = new Uint8ClampedArray(clarityData.data)
+              const clarityDataArr = clarityData.data
+
+              for (let y = 1; y < canvas.height - 1; y++) {
+                for (let x = 1; x < canvas.width - 1; x++) {
+                  const idx = (y * canvas.width + x) * 4
+
+                  for (let c = 0; c < 3; c++) {
+                    const current = originalData[idx + c]
+                    const up = originalData[((y - 1) * canvas.width + x) * 4 + c]
+                    const down = originalData[((y + 1) * canvas.width + x) * 4 + c]
+                    const left = originalData[(y * canvas.width + (x - 1)) * 4 + c]
+                    const right = originalData[(y * canvas.width + (x + 1)) * 4 + c]
+
+                    const diff = current * 2 - (up + down + left + right) / 4
+                    clarityDataArr[idx + c] = Math.min(255, Math.max(0, current + diff * 0.3))
+                  }
+                }
+              }
+
+              ctx.putImageData(clarityData, 0, 0)
+              break
+            case 'vivid':
+              // 鲜艳效果 (增加对比度和饱和度)
+              const vividData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+              const vividDataArr = vividData.data
+
+              for (let i = 0; i < vividDataArr.length; i += 4) {
+                // 增加对比度
+                vividDataArr[i] = Math.min(255, Math.max(0, (vividDataArr[i] - 128) * 1.2 + 128))
+                vividDataArr[i + 1] = Math.min(
+                  255,
+                  Math.max(0, (vividDataArr[i + 1] - 128) * 1.2 + 128),
+                )
+                vividDataArr[i + 2] = Math.min(
+                  255,
+                  Math.max(0, (vividDataArr[i + 2] - 128) * 1.2 + 128),
+                )
+
+                // 增加饱和度
+                const avg = (vividDataArr[i] + vividDataArr[i + 1] + vividDataArr[i + 2]) / 3
+                vividDataArr[i] = Math.min(
+                  255,
+                  Math.max(0, vividDataArr[i] + (vividDataArr[i] - avg) * 0.3),
+                )
+                vividDataArr[i + 1] = Math.min(
+                  255,
+                  Math.max(0, vividDataArr[i + 1] + (vividDataArr[i + 1] - avg) * 0.3),
+                )
+                vividDataArr[i + 2] = Math.min(
+                  255,
+                  Math.max(0, vividDataArr[i + 2] + (vividDataArr[i + 2] - avg) * 0.3),
+                )
+              }
+
+              ctx.putImageData(vividData, 0, 0)
+              break
+            case 'dreamy':
+              // 梦幻效果 (增加曝光和柔光)
+              ctx.globalCompositeOperation = 'source-over'
+
+              // 绘制轻微的发光效果
+              ctx.shadowColor = 'rgba(255, 255, 255, 0.3)'
+              ctx.shadowBlur = 10
+              ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+
+              // 增加淡紫色调
+              ctx.globalCompositeOperation = 'overlay'
+              ctx.fillStyle = 'rgba(180, 180, 255, 0.15)'
+              ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+              // 重置合成模式
+              ctx.globalCompositeOperation = 'source-over'
+              break
+          }
+        }
+
+        // 转换为URL
+        processedImageUrl.value = canvas.toDataURL('image/jpeg', 0.9)
+        console.log(
+          '滤镜应用完成，已更新处理后URL',
+          processedImageUrl.value.substring(0, 30) + '...',
+        )
+
+        // Test if image is valid by preloading it
+        const testImg = new Image()
+        testImg.onload = () => {
+          console.log('处理后图片已成功加载，尺寸:', testImg.width, 'x', testImg.height)
+        }
+        testImg.onerror = (e) => {
+          console.error('处理后图片加载失败:', e)
+          // Fallback to original image in case of failure
+          processedImageUrl.value = imageUrl.value
+        }
+        testImg.src = processedImageUrl.value
+      } catch (error) {
+        console.error('应用滤镜时出错:', error)
+        // Fallback to original image
+        processedImageUrl.value = imageUrl.value
+      }
     }
 
     // 下载处理后的图片
@@ -668,52 +704,42 @@ export default defineComponent({
       sharpness.value = 0
       selectedFilter.value = 'none'
       isCropping.value = false
-      compareMode.value = false
       cropArea.left = 0
       cropArea.top = 0
       cropArea.width = 0
       cropArea.height = 0
       currentCropRatio.value = 'free'
 
-      if (imageUrl.value) {
+      if (imageLoaded.value) {
         nextTick(() => {
           applyFilters()
         })
       }
     }
 
-    // 切换比较模式
-    const toggleCompareMode = () => {
-      compareMode.value = !compareMode.value
-      sliderPosition.value = 50
-    }
+    const toggleProcessedView = () => {
+      console.log('切换视图, 之前值:', showProcessed.value)
 
-    // 滑块比较功能
-    const startMoveSlider = (event: MouseEvent) => {
-      isDraggingSlider = true
-      document.addEventListener('mousemove', moveSlider)
-      document.addEventListener('mouseup', stopMoveSlider)
-    }
+      // Crucial fix: apply filters before changing view if needed
+      if (!showProcessed.value && imageLoaded.value) {
+        // We're switching TO processed view, ensure we have a processed image
+        if (!processedImageUrl.value) {
+          console.log('应用滤镜生成处理后的图片...')
+          applyFilters()
+        }
 
-    const moveSlider = (event: MouseEvent) => {
-      if (!isDraggingSlider || !originalImage.value) return
-
-      const rect = originalImage.value.getBoundingClientRect()
-      let newPosition = ((event.clientX - rect.left) / rect.width) * 100
-      newPosition = Math.max(0, Math.min(100, newPosition))
-      sliderPosition.value = newPosition
-
-      // 更新分割线和裁剪
-      if (originalImage.value && processedImage.value) {
-        originalImage.value.style.clipPath = `inset(0 ${100 - sliderPosition.value}% 0 0)`
-        processedImage.value.style.clipPath = `inset(0 0 0 ${sliderPosition.value}%)`
+        // Only change to processed view if we actually have a processed image
+        if (processedImageUrl.value) {
+          showProcessed.value = true
+          console.log('切换到处理后视图, URL存在:', !!processedImageUrl.value)
+        } else {
+          console.error('无法切换视图 - 处理后的图片不存在')
+        }
+      } else {
+        // Switching TO original view is always safe
+        showProcessed.value = false
+        console.log('切换到原图视图')
       }
-    }
-
-    const stopMoveSlider = () => {
-      isDraggingSlider = false
-      document.removeEventListener('mousemove', moveSlider)
-      document.removeEventListener('mouseup', stopMoveSlider)
     }
 
     // 裁剪功能
@@ -911,6 +937,57 @@ export default defineComponent({
       })
     }
 
+    const onImageLoad = () => {
+      console.log('onImageLoad triggered')
+      console.log('原始图片已加载')
+      imageLoaded.value = true
+
+      try {
+        // Create a basic processed version immediately
+        const canvas = document.createElement('canvas')
+        const ctx = canvas.getContext('2d')
+        if (ctx && originalImage.value) {
+          canvas.width = originalImage.value.naturalWidth
+          canvas.height = originalImage.value.naturalHeight
+          ctx.drawImage(originalImage.value, 0, 0)
+          processedImageUrl.value = canvas.toDataURL('image/jpeg', 0.9)
+          console.log('成功创建初始处理图片')
+        }
+      } catch (error) {
+        console.error('创建初始处理图片出错:', error)
+      }
+    }
+
+    // Add this debug flag
+    const debugMode = ref(true) // Set to false in production
+
+    // Add a debug function to force creation of processed image
+    const forceCreateProcessed = () => {
+      if (!originalImage.value) {
+        console.error('原图不存在，无法强制创建处理图')
+        return
+      }
+
+      try {
+        const canvas = document.createElement('canvas')
+        const ctx = canvas.getContext('2d')
+        if (ctx && originalImage.value) {
+          canvas.width = originalImage.value.naturalWidth
+          canvas.height = originalImage.value.naturalHeight
+          ctx.drawImage(originalImage.value, 0, 0)
+
+          // Add a visible mark to confirm this is a new image
+          ctx.fillStyle = 'rgba(255,0,0,0.3)'
+          ctx.fillRect(20, 20, 50, 50)
+
+          processedImageUrl.value = canvas.toDataURL('image/jpeg', 0.9)
+          console.log('强制创建的处理图已更新')
+        }
+      } catch (error) {
+        console.error('强制创建处理图出错:', error)
+      }
+    }
+
     // 事件监听器清理
     onMounted(() => {
       window.addEventListener('resize', () => {
@@ -928,13 +1005,30 @@ export default defineComponent({
     })
 
     onUnmounted(() => {
-      document.removeEventListener('mousemove', moveSlider)
-      document.removeEventListener('mouseup', stopMoveSlider)
       document.removeEventListener('mousemove', moveCrop)
       document.removeEventListener('mouseup', stopDragCrop)
       document.removeEventListener('mousemove', resizeCrop)
       document.removeEventListener('mouseup', stopResizeCrop)
     })
+
+    watch(
+      () => imageUrl.value,
+      (newVal) => {
+        console.log('imageUrl changed:', newVal)
+      },
+    )
+    watch(
+      () => processedImageUrl.value,
+      (newVal) => {
+        console.log('processedImageUrl changed:', newVal)
+      },
+    )
+    watch(
+      () => showProcessed.value,
+      (newVal) => {
+        console.log('showProcessed changed:', newVal)
+      },
+    )
 
     return {
       imageUrl,
@@ -942,7 +1036,6 @@ export default defineComponent({
       originalImage,
       processedImage,
       showProcessed,
-      compareMode,
       brightness,
       contrast,
       saturation,
@@ -959,13 +1052,16 @@ export default defineComponent({
       applyFilters,
       downloadProcessedImage,
       resetAllSettings,
-      toggleCompareMode,
-      startMoveSlider,
       startCropping,
       setCropRatio,
       startDragCrop,
       startResizeCrop,
       applyCrop,
+      onImageLoad,
+      imageLoaded,
+      toggleProcessedView,
+      debugMode,
+      forceCreateProcessed,
     }
   },
 })

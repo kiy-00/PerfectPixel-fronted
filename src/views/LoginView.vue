@@ -102,23 +102,30 @@
         <button
           type="submit"
           class="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-white bg-primary hover:bg-green-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-accent transition duration-200"
+          :disabled="isLoading"
         >
-          登录
+          <span v-if="isLoading"> 登录中... </span>
+          <span v-else> 登录 </span>
         </button>
+
+        <!-- 错误消息 -->
+        <div v-if="errorMessage" class="mt-2 text-sm text-error text-center">
+          {{ errorMessage }}
+        </div>
       </form>
 
       <!-- 分隔线 -->
-      <div class="relative my-6">
+      <!-- <div class="relative my-6">
         <div class="absolute inset-0 flex items-center">
           <div class="w-full border-t border-green-light"></div>
         </div>
         <div class="relative flex justify-center text-sm">
           <span class="px-2 bg-white text-neutral-dark"> 或者使用 </span>
         </div>
-      </div>
+      </div> -->
 
       <!-- 第三方登录选项 -->
-      <div class="grid grid-cols-3 gap-3">
+      <!-- <div class="grid grid-cols-3 gap-3">
         <button
           type="button"
           class="py-2 px-4 border rounded-md shadow-sm bg-white hover:bg-green-light text-neutral-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-accent"
@@ -137,7 +144,7 @@
         >
           微博
         </button>
-      </div>
+      </div> -->
 
       <!-- 注册链接 -->
       <div class="text-center mt-6">
@@ -159,6 +166,7 @@
 <script lang="ts">
 import { defineComponent, ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
+import { userAPI } from '../services/apiService'
 
 export default defineComponent({
   name: 'LoginView',
@@ -170,6 +178,10 @@ export default defineComponent({
     // 密码显示控制
     const showPassword = ref(false)
 
+    // 添加状态管理
+    const isLoading = ref(false)
+    const errorMessage = ref('')
+
     // 登录表单数据
     const loginForm = reactive({
       identifier: '', // 用户名或邮箱
@@ -178,14 +190,116 @@ export default defineComponent({
     })
 
     // 提交处理函数
-    const handleSubmit = () => {
-      console.log('登录信息:', {
-        loginMethod: loginMethod.value,
-        identifier: loginForm.identifier,
-        password: loginForm.password,
-        remember: loginForm.remember,
-      })
-      // 这里添加登录逻辑
+    const handleSubmit = async () => {
+      try {
+        // 重置错误消息
+        errorMessage.value = ''
+
+        // 表单验证
+        if (!loginForm.identifier) {
+          errorMessage.value = '请输入' + (loginMethod.value === 'username' ? '用户名' : '邮箱')
+          return
+        }
+
+        if (!loginForm.password) {
+          errorMessage.value = '请输入密码'
+          return
+        }
+
+        // 设置加载状态
+        isLoading.value = true
+
+        // 准备请求数据
+        const loginData = {
+          UsernameOrEmail: loginForm.identifier,
+          Password: loginForm.password,
+        }
+
+        console.log('正在发送登录请求:', {
+          url: import.meta.env.VITE_API_BASE_URL + '/User/login',
+          data: { ...loginData, Password: '******' }, // 日志中隐藏密码
+        })
+
+        // 发送登录请求 - 使用API服务
+        const response = await userAPI.login(loginForm.identifier, loginForm.password)
+
+        console.log('登录成功:', response.data)
+
+        // 存储用户信息和令牌 - 修正字段名的大小写匹配
+        const userData = {
+          userId: response.data.userId,
+          username: response.data.username,
+          email: response.data.email,
+          userType: response.data.roles?.join(',') || 'Regular',
+          roles: response.data.roles || ['Regular'],
+          token: response.data.token,
+        }
+
+        // 打印确认从响应中提取的用户数据正确
+        console.log('提取的用户数据:', userData)
+
+        // 如果选择记住登录状态，则存储在 localStorage，否则存储在 sessionStorage
+        const storage = loginForm.remember ? localStorage : sessionStorage
+
+        // 先清除现有的数据，避免冲突
+        localStorage.removeItem('user')
+        localStorage.removeItem('token')
+        sessionStorage.removeItem('user')
+        sessionStorage.removeItem('token')
+
+        // 存储新数据 - 修复：使用小写的 token 字段名
+        storage.setItem('user', JSON.stringify(userData))
+        storage.setItem('token', response.data.token) // 修改: 使用小写的 token
+
+        // 添加验证部分
+        const storedUser = JSON.parse(storage.getItem('user') || '{}')
+        console.log(`已存储用户数据至${loginForm.remember ? 'localStorage' : 'sessionStorage'}:`, {
+          username: storedUser.username,
+          userId: storedUser.userId,
+          roles: storedUser.roles,
+        })
+
+        // 额外验证存储是否成功
+        console.log('验证存储的完整用户数据:', storedUser)
+        console.log('验证存储的token:', storage.getItem('token'))
+
+        // 触发自定义事件，通知其他组件用户已登录
+        window.dispatchEvent(new CustomEvent('user-login', { detail: userData }))
+
+        // 登录成功后跳转到首页
+        router.push('/home')
+      } catch (error: any) {
+        console.error('登录失败:', error)
+
+        // 处理不同类型的错误
+        if (error.response) {
+          // 服务器返回了错误状态码
+          const { status, data } = error.response
+
+          switch (status) {
+            case 400:
+              errorMessage.value = data.message || '请求参数错误'
+              break
+            case 401:
+              errorMessage.value = '用户名/邮箱或密码不正确'
+              break
+            case 403:
+              errorMessage.value = '账号未激活，请联系客服'
+              break
+            default:
+              errorMessage.value = '登录失败，请稍后再试'
+          }
+        } else if (error.request) {
+          // 请求发送了但没有收到响应
+          errorMessage.value = '无法连接到服务器，请检查网络连接'
+        } else {
+          // 设置请求时发生了错误
+          errorMessage.value = '登录过程中发生错误'
+        }
+      } finally {
+        // 无论成功还是失败，都重置加载状态
+        isLoading.value = false
+      }
     }
 
     const goRegister = () => {
@@ -198,6 +312,8 @@ export default defineComponent({
       loginForm,
       handleSubmit,
       goRegister,
+      isLoading,
+      errorMessage,
     }
   },
 })
