@@ -53,6 +53,16 @@ export const userAPI = {
     return apiClient.get('/User/current')
   },
 
+  // 获取用户的摄影师ID
+  getPhotographerId: (userId: number) => {
+    return apiClient.get(`/User/${userId}/photographer-id`)
+  },
+
+  // 获取用户的修图师ID
+  getRetoucherId: (userId: number) => {
+    return apiClient.get(`/User/${userId}/retoucher-id`)
+  },
+
   // 你可以在这里添加更多用户相关API
 }
 

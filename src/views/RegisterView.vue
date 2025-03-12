@@ -176,6 +176,7 @@
 import { defineComponent, ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { userAPI } from '../services/apiService'
+import { useUserStore } from '../stores/userStore'
 
 export default defineComponent({
   name: 'RegisterView',
@@ -291,27 +292,22 @@ export default defineComponent({
 
         console.log('注册成功:', response.data)
 
-        // 注册成功后自动登录
-        const loginData = {
-          UsernameOrEmail: registerForm.username,
-          Password: registerForm.password,
-        }
+        // 注册成功后，先登录
+        const loginResponse = await userAPI.login(registerForm.username, registerForm.password)
+        const token = loginResponse.data.token
 
-        // 登录请求
-        const loginResponse = await userAPI.login(loginData.UsernameOrEmail, loginData.Password)
+        // 先存储token以便后续API调用
+        sessionStorage.setItem('token', token)
 
-        // 存储用户信息和令牌
-        const userData = {
-          userId: loginResponse.data.UserId,
-          username: loginResponse.data.Username,
-          email: loginResponse.data.Email,
-          userType: loginResponse.data.UserType,
-          token: loginResponse.data.Token,
-        }
+        // 获取完整用户信息
+        const userResponse = await userAPI.getCurrentUser()
+        const completeUserData = userResponse.data
+        completeUserData.token = token
 
-        // 存储在sessionStorage中
-        sessionStorage.setItem('user', JSON.stringify(userData))
-        sessionStorage.setItem('token', loginResponse.data.Token)
+        // 使用Pinia存储
+        const userStore = useUserStore()
+        // saveLoginInfo会自动获取摄影师和修图师ID
+        await userStore.saveLoginInfo(completeUserData, token, false)
 
         // 跳转到首页
         router.push('/home')

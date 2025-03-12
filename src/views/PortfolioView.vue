@@ -95,7 +95,7 @@
                     ? 'bg-primary text-white'
                     : 'bg-white text-neutral-dark hover:bg-green-light hover:bg-opacity-20',
                 ]"
-                :disabled="!isPhotographer"
+                :disabled="!userStore.isPhotographer"
               >
                 摄影作品
               </button>
@@ -107,7 +107,7 @@
                     ? 'bg-primary text-white'
                     : 'bg-white text-neutral-dark hover:bg-green-light hover:bg-opacity-20',
                 ]"
-                :disabled="!isRetoucher"
+                :disabled="!userStore.isRetoucher"
               >
                 修图作品
               </button>
@@ -125,7 +125,7 @@
 
         <!-- 摄影师认证提示 -->
         <div
-          v-if="portfolioType === 'photography' && !isPhotographer"
+          v-if="portfolioType === 'photography' && !userStore.isPhotographer"
           class="bg-white rounded-lg shadow-md p-8 mb-8 text-center"
         >
           <div class="mb-4">
@@ -163,7 +163,7 @@
 
         <!-- 修图师认证提示 -->
         <div
-          v-else-if="portfolioType === 'retouching' && !isRetoucher"
+          v-else-if="portfolioType === 'retouching' && !userStore.isRetoucher"
           class="bg-white rounded-lg shadow-md p-8 mb-8 text-center"
         >
           <div class="mb-4">
@@ -194,7 +194,7 @@
         </div>
 
         <!-- 摄影作品列表 -->
-        <div v-else-if="portfolioType === 'photography' && isPhotographer">
+        <div v-else-if="portfolioType === 'photography' && userStore.isPhotographer">
           <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             <!-- 添加新作品的卡片 -->
             <div
@@ -314,7 +314,7 @@
         </div>
 
         <!-- 修图作品列表 -->
-        <div v-else-if="portfolioType === 'retouching' && isRetoucher">
+        <div v-else-if="portfolioType === 'retouching' && userStore.isRetoucher">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <!-- 添加新作品按钮 -->
             <div
@@ -461,19 +461,17 @@
 
 <script lang="ts">
 import { defineComponent, ref, computed, onMounted } from 'vue'
-import { userAPI } from '../services/apiService'
+import { useUserStore } from '../stores/userStore'
 
 export default defineComponent({
   name: 'PortfolioView',
   setup() {
+    // 使用集中管理的用户存储
+    const userStore = useUserStore()
+
     // 状态变量
     const loading = ref(true)
     const error = ref('')
-
-    // 用户角色和信息
-    const user = ref({
-      roles: [] as string[],
-    })
 
     // 标签状态
     const activeTab = ref('all') // 'all', 'public', 'private'
@@ -537,15 +535,6 @@ export default defineComponent({
       },
     ])
 
-    // 角色判断
-    const isPhotographer = computed(() => {
-      return user.value.roles.includes('Photographer')
-    })
-
-    const isRetoucher = computed(() => {
-      return user.value.roles.includes('Retoucher')
-    })
-
     // 根据标签筛选的摄影作品
     const filteredPhotographyPortfolio = computed(() => {
       if (activeTab.value === 'all') {
@@ -574,14 +563,15 @@ export default defineComponent({
       error.value = ''
 
       try {
-        // 获取用户信息
-        const response = await userAPI.getCurrentUser()
-        user.value.roles = response.data.roles || []
+        // 初始化userStore，从本地存储或API获取用户信息
+        if (!userStore.isAuthenticated) {
+          await userStore.initializeUser()
+        }
 
         // 根据角色设置初始标签
-        if (isPhotographer.value) {
+        if (userStore.isPhotographer) {
           portfolioType.value = 'photography'
-        } else if (isRetoucher.value) {
+        } else if (userStore.isRetoucher) {
           portfolioType.value = 'retouching'
         }
 
@@ -606,13 +596,11 @@ export default defineComponent({
     })
 
     return {
+      userStore,
       loading,
       error,
-      user,
       activeTab,
       portfolioType,
-      isPhotographer,
-      isRetoucher,
       photographyPortfolio,
       retouchingPortfolio,
       filteredPhotographyPortfolio,

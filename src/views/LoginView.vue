@@ -167,6 +167,7 @@
 import { defineComponent, ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { userAPI } from '../services/apiService'
+import { useUserStore } from '../stores/userStore'
 
 export default defineComponent({
   name: 'LoginView',
@@ -225,48 +226,26 @@ export default defineComponent({
 
         console.log('登录成功:', response.data)
 
-        // 存储用户信息和令牌 - 修正字段名的大小写匹配
-        const userData = {
-          userId: response.data.userId,
-          username: response.data.username,
-          email: response.data.email,
-          userType: response.data.roles?.join(',') || 'Regular',
-          roles: response.data.roles || ['Regular'],
-          token: response.data.token,
-        }
-
-        // 打印确认从响应中提取的用户数据正确
-        console.log('提取的用户数据:', userData)
-
-        // 如果选择记住登录状态，则存储在 localStorage，否则存储在 sessionStorage
+        // 先将token存储起来 (让后续API请求可以使用它)
+        const token = response.data.token
         const storage = loginForm.remember ? localStorage : sessionStorage
+        storage.setItem('token', token)
 
-        // 先清除现有的数据，避免冲突
-        localStorage.removeItem('user')
-        localStorage.removeItem('token')
-        sessionStorage.removeItem('user')
-        sessionStorage.removeItem('token')
+        // 获取完整的用户信息
+        console.log('正在获取完整用户信息...')
+        const userResponse = await userAPI.getCurrentUser()
+        const completeUserData = userResponse.data
+        console.log('获取到完整用户信息:', completeUserData)
 
-        // 存储新数据 - 修复：使用小写的 token 字段名
-        storage.setItem('user', JSON.stringify(userData))
-        storage.setItem('token', response.data.token) // 修改: 使用小写的 token
+        // 将token添加到完整用户信息中
+        completeUserData.token = token
 
-        // 添加验证部分
-        const storedUser = JSON.parse(storage.getItem('user') || '{}')
-        console.log(`已存储用户数据至${loginForm.remember ? 'localStorage' : 'sessionStorage'}:`, {
-          username: storedUser.username,
-          userId: storedUser.userId,
-          roles: storedUser.roles,
-        })
+        // 使用Pinia存储保存用户信息
+        // 注意: saveLoginInfo 方法现在会自动获取摄影师ID和修图师ID（如果用户有对应角色）
+        const userStore = useUserStore()
+        await userStore.saveLoginInfo(completeUserData, token, loginForm.remember)
 
-        // 额外验证存储是否成功
-        console.log('验证存储的完整用户数据:', storedUser)
-        console.log('验证存储的token:', storage.getItem('token'))
-
-        // 触发自定义事件，通知其他组件用户已登录
-        window.dispatchEvent(new CustomEvent('user-login', { detail: userData }))
-
-        // 登录成功后跳转到首页
+        // 跳转到首页
         router.push('/home')
       } catch (error: any) {
         console.error('登录失败:', error)

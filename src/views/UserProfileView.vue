@@ -31,16 +31,16 @@
             <div
               class="h-24 w-24 rounded-full border-4 border-white bg-green-dark text-white flex items-center justify-center text-4xl font-bold mr-6"
             >
-              {{ userInitial }}
+              {{ userStore.userInitial }}
             </div>
 
             <!-- 用户基本信息 -->
             <div class="mt-4 md:mt-0 text-center md:text-left">
-              <h1 class="text-3xl font-bold">{{ user.username }}</h1>
-              <p class="text-green-light mt-1">{{ formattedRoles }}</p>
+              <h1 class="text-3xl font-bold">{{ userStore.userInfo?.username }}</h1>
+              <p class="text-green-light mt-1">{{ userStore.formattedRoles }}</p>
               <p class="text-green-light text-sm mt-1">
-                <span class="mr-4">注册于 {{ formatDate(user.createdAt) }}</span>
-                <span>上次登录 {{ formatDate(user.lastLogin) }}</span>
+                <span class="mr-4">注册于 {{ formatDate(userStore.userInfo?.createdAt) }}</span>
+                <span>上次登录 {{ formatDate(userStore.userInfo?.lastLogin) }}</span>
               </p>
 
               <div class="mt-4 flex items-center justify-center md:justify-start space-x-4">
@@ -97,11 +97,15 @@
                   <div class="text-sm text-neutral-dark">作品</div>
                 </div>
                 <div>
-                  <div class="text-2xl font-bold text-primary">{{ user.followersCount }}</div>
+                  <div class="text-2xl font-bold text-primary">
+                    {{ userStore.userInfo?.followersCount || 0 }}
+                  </div>
                   <div class="text-sm text-neutral-dark">粉丝</div>
                 </div>
                 <div>
-                  <div class="text-2xl font-bold text-primary">{{ user.followingCount }}</div>
+                  <div class="text-2xl font-bold text-primary">
+                    {{ userStore.userInfo?.followingCount || 0 }}
+                  </div>
                   <div class="text-sm text-neutral-dark">关注</div>
                 </div>
               </div>
@@ -113,20 +117,20 @@
               <div class="space-y-4">
                 <div>
                   <h3 class="text-sm text-neutral-dark font-medium">全名</h3>
-                  <p class="mt-1 text-primary">{{ formattedName }}</p>
+                  <p class="mt-1 text-primary">{{ userStore.fullName || '暂无' }}</p>
                 </div>
                 <div>
                   <h3 class="text-sm text-neutral-dark font-medium">邮箱</h3>
-                  <p class="mt-1 text-primary">{{ user.email }}</p>
+                  <p class="mt-1 text-primary">{{ userStore.userInfo?.email }}</p>
                 </div>
                 <div>
                   <h3 class="text-sm text-neutral-dark font-medium">电话</h3>
-                  <p class="mt-1 text-primary">{{ user.phoneNumber || '暂无' }}</p>
+                  <p class="mt-1 text-primary">{{ userStore.userInfo?.phoneNumber || '暂无' }}</p>
                 </div>
                 <div>
                   <h3 class="text-sm text-neutral-dark font-medium">个人简介</h3>
                   <p class="mt-1 text-primary">
-                    {{ user.biography || '用户暂未填写个人简介' }}
+                    {{ userStore.userInfo?.biography || '用户暂未填写个人简介' }}
                   </p>
                 </div>
               </div>
@@ -322,38 +326,27 @@
 
 <script lang="ts">
 import { defineComponent, ref, computed, onMounted } from 'vue'
-import { userAPI } from '../services/apiService'
+import { useUserStore } from '../stores/userStore'
 
 export default defineComponent({
   name: 'UserProfileView',
   setup() {
+    // 使用用户信息存储
+    const userStore = useUserStore()
+
     // 状态变量
-    const loading = ref(true)
+    const loading = ref(false)
     const error = ref('')
-
-    // 用户数据
-    const user = ref({
-      userId: 0,
-      username: '',
-      email: '',
-      firstName: '',
-      lastName: '',
-      phoneNumber: '',
-      biography: null as string | null, // 添加biography字段
-      roles: [] as string[],
-      createdAt: '',
-      lastLogin: '',
-      followersCount: 0,
-      followingCount: 0,
-    })
-
-    // 额外信息 - 这些可能来自其他API或用户填写的资料
-    // 移除 bio 变量，直接使用 user.biography
-    // const bio = ref('')
-    const location = ref('')
 
     // 模拟统计数据 - 只保留照片数，其他使用真实数据
     const photoCount = ref(48)
+
+    // 活动作品集标签
+    const activePortfolioTab = ref('photography')
+
+    // 角色状态判断 - 使用store中的getter
+    const isPhotographer = computed(() => userStore.isPhotographer)
+    const isRetoucher = computed(() => userStore.isRetoucher)
 
     // 模拟作品集数据 - 实际项目中通常会有专门的API获取
     const portfolio = ref([
@@ -388,18 +381,6 @@ export default defineComponent({
         category: '美食摄影',
       },
     ])
-
-    // 活动作品集标签
-    const activePortfolioTab = ref('photography')
-
-    // 角色状态判断
-    const isPhotographer = computed(() => {
-      return user.value.roles.includes('Photographer')
-    })
-
-    const isRetoucher = computed(() => {
-      return user.value.roles.includes('Retoucher')
-    })
 
     // 摄影作品集数据
     const photographyPortfolio = ref([
@@ -451,51 +432,8 @@ export default defineComponent({
       },
     ])
 
-    // 计算用户名首字母作为头像
-    const userInitial = computed(() => {
-      if (!user.value.username) return '?'
-      return user.value.username.charAt(0).toUpperCase()
-    })
-
-    // 格式化全名
-    const formattedName = computed(() => {
-      if (user.value.firstName && user.value.lastName) {
-        return `${user.value.firstName} ${user.value.lastName}`
-      } else if (user.value.firstName) {
-        return user.value.firstName
-      } else if (user.value.lastName) {
-        return user.value.lastName
-      } else {
-        return '暂无'
-      }
-    })
-
-    // 格式化角色显示
-    const formattedRoles = computed(() => {
-      const roleMap: Record<string, string> = {
-        Regular: '普通用户',
-        Admin: '管理员',
-        Photographer: '摄影师',
-        Retoucher: '修图师',
-        Model: '模特',
-      }
-
-      // 筛选非普通用户角色
-      const nonRegularRoles = user.value.roles.filter((role) => role !== 'Regular')
-
-      if (nonRegularRoles.length > 0) {
-        // 如果有非普通用户角色，显示这些角色
-        return nonRegularRoles.map((role) => roleMap[role] || role).join('、')
-      } else if (user.value.roles.includes('Regular')) {
-        // 如果只有普通用户角色，显示"普通用户"
-        return '普通用户'
-      } else {
-        return '普通用户'
-      }
-    })
-
     // 格式化日期
-    const formatDate = (dateString: string) => {
+    const formatDate = (dateString?: string) => {
       if (!dateString) return '暂无数据'
 
       try {
@@ -518,24 +456,8 @@ export default defineComponent({
 
       try {
         console.log('开始获取用户信息...')
-        const response = await userAPI.getCurrentUser()
-        console.log('获取用户信息成功:', response.data)
-
-        // 更新用户数据，包含新的biography和其他字段
-        user.value = {
-          userId: response.data.userId,
-          username: response.data.username,
-          email: response.data.email,
-          firstName: response.data.firstName,
-          lastName: response.data.lastName,
-          phoneNumber: response.data.phoneNumber,
-          biography: response.data.biography, // 添加新字段
-          roles: response.data.roles || [],
-          createdAt: response.data.createdAt,
-          lastLogin: response.data.lastLogin,
-          followersCount: response.data.followersCount || 0,
-          followingCount: response.data.followingCount || 0,
-        }
+        await userStore.fetchUserInfo()
+        console.log('获取用户信息成功')
       } catch (err: any) {
         console.error('获取用户信息失败:', err)
         if (err.response?.status === 401) {
@@ -549,22 +471,25 @@ export default defineComponent({
     }
 
     // 在组件挂载时获取用户资料
-    onMounted(() => {
-      fetchUserProfile()
+    onMounted(async () => {
+      loading.value = true
+      // 先尝试从本地存储获取用户信息
+      const hasStoredUser = userStore.loadUserFromStorage()
+
+      if (!hasStoredUser) {
+        // 如果本地没有用户信息，尝试从API获取
+        await fetchUserProfile()
+      } else {
+        loading.value = false
+      }
     })
 
     return {
-      user,
+      userStore,
       loading,
       error,
-      userInitial,
-      formattedRoles,
-      formattedName,
       formatDate,
-      // Remove bio from returned variables since we're using user.biography directly
-      location,
-      photoCount, // 替换原来的 stats
-      portfolio,
+      photoCount,
       fetchUserProfile,
       activePortfolioTab,
       isPhotographer,
