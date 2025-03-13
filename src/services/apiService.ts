@@ -122,6 +122,19 @@ export const retoucherPortfolioAPI = {
     return apiClient.delete(`/retoucher-portfolios/${portfolioId}`)
   },
 
+  // 更新作品集信息
+  updatePortfolio: (
+    portfolioId: number,
+    portfolioData: {
+      title: string
+      description: string
+      category: string
+      isPublic: boolean
+    },
+  ) => {
+    return apiClient.put(`/retoucher-portfolios/${portfolioId}`, portfolioData)
+  },
+
   // 更多修图作品集API可以在这里添加
 }
 

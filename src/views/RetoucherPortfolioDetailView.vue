@@ -254,6 +254,7 @@
                         上传封面图片
                       </button>
                       <button
+                        @click="openEditModal"
                         class="flex items-center w-full px-4 py-2 text-sm text-neutral-dark hover:bg-green-light hover:bg-opacity-10"
                         role="menuitem"
                       >
@@ -893,6 +894,131 @@
         </div>
       </div>
     </div>
+
+    <!-- 添加编辑作品集模态框 -->
+    <div
+      v-if="showEditModal"
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+    >
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div class="p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold text-neutral-dark">编辑作品集</h2>
+            <button @click="closeEditModal" class="text-neutral-dark hover:text-error">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+
+          <!-- 编辑表单 -->
+          <form @submit.prevent="submitEditForm">
+            <!-- 错误提示 -->
+            <div v-if="editError" class="mb-4 p-3 bg-error bg-opacity-10 text-error rounded-md">
+              {{ editError }}
+            </div>
+
+            <!-- 作品集标题 -->
+            <div class="mb-4">
+              <label for="edit-title" class="block text-sm font-medium text-neutral-dark mb-1">
+                作品集标题 <span class="text-error">*</span>
+              </label>
+              <input
+                type="text"
+                id="edit-title"
+                v-model="editForm.title"
+                class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
+                placeholder="输入作品集标题"
+                required
+              />
+            </div>
+
+            <!-- 作品集描述 -->
+            <div class="mb-4">
+              <label
+                for="edit-description"
+                class="block text-sm font-medium text-neutral-dark mb-1"
+              >
+                作品集描述
+              </label>
+              <textarea
+                id="edit-description"
+                v-model="editForm.description"
+                class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
+                rows="4"
+                placeholder="描述你的作品集..."
+              ></textarea>
+            </div>
+
+            <!-- 作品集分类 -->
+            <div class="mb-4">
+              <label for="edit-category" class="block text-sm font-medium text-neutral-dark mb-1">
+                作品集分类 <span class="text-error">*</span>
+              </label>
+              <select
+                id="edit-category"
+                v-model="editForm.category"
+                class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
+                required
+              >
+                <option value="Portrait">人像修图</option>
+                <option value="Wedding">婚礼修图</option>
+                <option value="Fashion">时尚修图</option>
+                <option value="Product">产品修图</option>
+                <option value="Event">活动修图</option>
+                <option value="Landscape">风景修图</option>
+                <option value="Other">其他</option>
+              </select>
+            </div>
+
+            <!-- 公开状态 -->
+            <div class="mb-6">
+              <label class="flex items-center">
+                <input
+                  type="checkbox"
+                  v-model="editForm.isPublic"
+                  class="h-4 w-4 text-primary rounded focus:ring-primary border-gray-300"
+                />
+                <span class="ml-2 text-sm text-neutral-dark">公开作品集</span>
+              </label>
+              <p class="text-xs text-neutral-dark mt-1">
+                公开的作品集将在平台上展示，所有用户都可以查看
+              </p>
+            </div>
+
+            <!-- 按钮区域 -->
+            <div class="flex justify-end space-x-3 mt-6">
+              <button
+                type="button"
+                @click="closeEditModal"
+                class="px-4 py-2 border border-neutral-dark text-neutral-dark rounded-md hover:bg-neutral hover:bg-opacity-10"
+              >
+                取消
+              </button>
+              <button
+                type="submit"
+                class="px-4 py-2 bg-primary text-white rounded-md hover:bg-green-dark"
+                :disabled="isEditing"
+              >
+                <span v-if="isEditing">保存中...</span>
+                <span v-else>保存修改</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -1394,6 +1520,90 @@ export default defineComponent({
       }
     }
 
+    // 编辑模态框相关状态
+    const showEditModal = ref(false)
+    const isEditing = ref(false)
+    const editError = ref('')
+    const editForm = ref({
+      title: '',
+      description: '',
+      category: '',
+      isPublic: false,
+    })
+
+    // 打开编辑模态框
+    const openEditModal = () => {
+      if (!portfolio.value) return
+
+      // 填充表单数据
+      editForm.value = {
+        title: portfolio.value.title,
+        description: portfolio.value.description,
+        category: portfolio.value.category,
+        isPublic: portfolio.value.isPublic,
+      }
+
+      showEditModal.value = true
+      showMoreOptions.value = false
+    }
+
+    // 关闭编辑模态框
+    const closeEditModal = () => {
+      showEditModal.value = false
+      editError.value = ''
+    }
+
+    // 提交编辑表单
+    const submitEditForm = async () => {
+      if (!portfolio.value) return
+
+      try {
+        isEditing.value = true
+        editError.value = ''
+
+        const portfolioId = portfolio.value.portfolioId
+
+        // 确保至少填写了必填字段
+        if (!editForm.value.title.trim()) {
+          editError.value = '作品集标题不能为空'
+          isEditing.value = false
+          return
+        }
+
+        console.log(`准备更新作品集 #${portfolioId} 的信息`, editForm.value)
+
+        // 调用API更新作品集
+        await retoucherPortfolioAPI.updatePortfolio(portfolioId, {
+          title: editForm.value.title,
+          description: editForm.value.description,
+          category: editForm.value.category,
+          isPublic: editForm.value.isPublic,
+        })
+
+        console.log('作品集更新成功')
+
+        // 关闭模态框
+        closeEditModal()
+
+        // 重新获取作品集数据以显示最新信息
+        await fetchPortfolioDetail()
+      } catch (err: any) {
+        console.error('更新作品集失败:', err)
+
+        if (err.response?.status === 401) {
+          editError.value = '登录已过期，请重新登录'
+        } else if (err.response?.status === 403) {
+          editError.value = '您没有权限编辑此作品集'
+        } else if (err.response?.status === 400) {
+          editError.value = err.response.data.message || '请求参数错误'
+        } else {
+          editError.value = '更新失败，请稍后再试'
+        }
+      } finally {
+        isEditing.value = false
+      }
+    }
+
     // 点击外部关闭下拉菜单
     onMounted(() => {
       document.addEventListener('click', (event) => {
@@ -1506,6 +1716,14 @@ export default defineComponent({
       openDeleteConfirmation,
       closeDeleteModal,
       confirmDelete,
+      // 编辑作品集相关
+      showEditModal,
+      isEditing,
+      editError,
+      editForm,
+      openEditModal,
+      closeEditModal,
+      submitEditForm,
     }
   },
 })
