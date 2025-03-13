@@ -108,6 +108,15 @@ export const retoucherPortfolioAPI = {
     return apiClient.get(`/retoucher-portfolios/${portfolioId}`)
   },
 
+  // 上传修图前后对比作品项
+  uploadBeforeAfterImages: (portfolioId: number, formData: FormData) => {
+    return apiClient.post(`/retoucher-portfolios/${portfolioId}/before-after`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    })
+  },
+
   // 更多修图作品集API可以在这里添加
 }
 

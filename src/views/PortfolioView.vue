@@ -498,6 +498,7 @@ import { defineComponent, ref, computed, onMounted, watch } from 'vue'
 import { useUserStore } from '../stores/userStore'
 import { retoucherPortfolioAPI } from '../services/apiService'
 import { userAPI } from '../services/apiService'
+import { useRouter } from 'vue-router'
 
 // Interface for retoucher portfolio
 interface RetoucherPortfolio {
@@ -542,6 +543,7 @@ export default defineComponent({
   setup() {
     // 使用集中管理的用户存储
     const userStore = useUserStore()
+    const router = useRouter()
 
     // 状态变量
     const loading = ref(true)
@@ -900,7 +902,11 @@ export default defineComponent({
         title: portfolio.title,
         items: portfolio.items?.length || 0,
       })
-      // TODO: 实现跳转到作品集详情页的逻辑
+      // 使用路由导航到详情页面
+      router.push({
+        name: 'retoucher-portfolio-detail',
+        params: { id: portfolio.portfolioId.toString() },
+      })
     }
 
     // 监听作品类型变化，切换到修图作品时加载数据

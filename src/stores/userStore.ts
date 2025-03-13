@@ -16,6 +16,8 @@ export interface UserInfo {
   followersCount: number
   followingCount: number
   token?: string
+  photographerId?: number | null
+  retoucherId?: number | null
 }
 
 export const useUserStore = defineStore('user', {
@@ -78,6 +80,16 @@ export const useUserStore = defineStore('user', {
         return ''
       }
     },
+
+    // 额外添加摄影师ID和修图师ID的getter
+    photographerId: (state) => state.userInfo?.photographerId || null,
+    retoucherId: (state) => state.userInfo?.retoucherId || null,
+
+    // 判断用户是否有专业ID
+    hasPhotographerId: (state) =>
+      state.userInfo?.photographerId !== undefined && state.userInfo?.photographerId !== null,
+    hasRetoucherId: (state) =>
+      state.userInfo?.retoucherId !== undefined && state.userInfo?.retoucherId !== null,
   },
 
   actions: {
@@ -105,22 +117,109 @@ export const useUserStore = defineStore('user', {
       }
     },
 
+    // 获取用户的摄影师和修图师ID (如果有)
+    async fetchUserRoleIds(userId: number) {
+      try {
+        let photographerId = null
+        let retoucherId = null
+
+        // 如果用户是摄影师，获取摄影师ID
+        if (this.isPhotographer) {
+          try {
+            console.log('正在获取摄影师ID...')
+            const photographerResponse = await userAPI.getPhotographerId(userId)
+            photographerId = photographerResponse.data.photographerId
+            console.log('获取到摄影师ID:', photographerId)
+          } catch (error) {
+            console.error('获取摄影师ID失败:', error)
+          }
+        }
+
+        // 如果用户是修图师，获取修图师ID
+        if (this.isRetoucher) {
+          try {
+            console.log('正在获取修图师ID...')
+            const retoucherResponse = await userAPI.getRetoucherId(userId)
+            retoucherId = retoucherResponse.data.retoucherId
+            console.log('获取到修图师ID:', retoucherId, typeof retoucherId)
+          } catch (error) {
+            console.error('获取修图师ID失败:', error)
+          }
+        }
+
+        // 将ID更新到用户信息中
+        if (this.userInfo) {
+          this.userInfo = {
+            ...this.userInfo,
+            photographerId: photographerId !== null ? Number(photographerId) : null,
+            retoucherId: retoucherId !== null ? Number(retoucherId) : null,
+          }
+
+          console.log('用户信息已更新，包含角色ID:', {
+            photographerId: this.userInfo.photographerId,
+            retoucherId: this.userInfo.retoucherId,
+            typePID: typeof this.userInfo.photographerId,
+            typeRID: typeof this.userInfo.retoucherId,
+          })
+
+          // 确保存储也被更新
+          this.updateUserStorage()
+        }
+
+        return { photographerId, retoucherId }
+      } catch (error) {
+        console.error('获取用户角色ID失败:', error)
+        throw error
+      }
+    },
+
+    // 更新本地存储中的用户信息
+    updateUserStorage() {
+      if (!this.userInfo) return
+
+      // 确保在存储前转换ID为数字类型
+      const userToStore = {
+        ...this.userInfo,
+        photographerId:
+          this.userInfo.photographerId !== null ? Number(this.userInfo.photographerId) : null,
+        retoucherId: this.userInfo.retoucherId !== null ? Number(this.userInfo.retoucherId) : null,
+      }
+
+      if (sessionStorage.getItem('user')) {
+        sessionStorage.setItem('user', JSON.stringify(userToStore))
+        console.log('更新sessionStorage中的用户信息，修图师ID:', userToStore.retoucherId)
+      }
+      if (localStorage.getItem('user')) {
+        localStorage.setItem('user', JSON.stringify(userToStore))
+        console.log('更新localStorage中的用户信息，修图师ID:', userToStore.retoucherId)
+      }
+    },
+
     // 从本地存储加载用户信息
     loadUserFromStorage() {
       const userStr = sessionStorage.getItem('user') || localStorage.getItem('user')
 
       if (userStr) {
         try {
-          const userData = JSON.parse(userStr)
-          this.userInfo = userData
-          console.log('已从存储中加载用户数据:', {
-            username: this.userInfo?.username,
-            roles: this.userInfo?.roles,
-          })
+          const parsedUser = JSON.parse(userStr)
+
+          // 确保数值类型的一致性
+          if (parsedUser.photographerId) {
+            parsedUser.photographerId = Number(parsedUser.photographerId)
+          }
+          if (parsedUser.retoucherId) {
+            parsedUser.retoucherId = Number(parsedUser.retoucherId)
+          }
+
+          this.userInfo = parsedUser
+          console.log(
+            '从存储加载用户信息成功，修图师ID:',
+            this.userInfo.retoucherId,
+            typeof this.userInfo.retoucherId,
+          )
           return true
         } catch (error) {
-          console.error('解析存储的用户数据失败:', error)
-          return false
+          console.error('解析存储中的用户信息失败:', error)
         }
       }
       return false
@@ -130,18 +229,45 @@ export const useUserStore = defineStore('user', {
     async initializeUser() {
       // 首先尝试从存储中加载
       const loadedFromStorage = this.loadUserFromStorage()
+      console.log('尝试从存储加载用户状态:', loadedFromStorage ? '成功' : '失败')
 
       // 如果本地存储有 token 但没有完整用户信息，则尝试从 API 获取
       if (!loadedFromStorage) {
-        const token = sessionStorage.getItem('token') || localStorage.getItem('token')
+        const token = localStorage.getItem('token') || sessionStorage.getItem('token')
         if (token) {
           try {
-            await this.fetchUserInfo()
+            console.log('找到token，尝试从API获取用户信息')
+            const response = await userAPI.getCurrentUser()
+            const userData = response.data
+            userData.token = token
+            this.userInfo = userData
+
+            // 获取用户角色ID
+            if (
+              (this.isPhotographer && !this.photographerId) ||
+              (this.isRetoucher && !this.retoucherId)
+            ) {
+              console.log('用户有专业角色，但缺少角色ID，尝试获取角色ID')
+              await this.fetchUserRoleIds(userData.userId)
+            }
+
             return true
           } catch (error) {
-            console.error('初始化用户信息失败:', error)
+            console.error('恢复用户会话失败:', error)
+            // 清除无效的token
+            localStorage.removeItem('token')
+            sessionStorage.removeItem('token')
             return false
           }
+        }
+      } else if (this.isAuthenticated) {
+        // 如果从存储加载成功，但缺少角色ID，尝试获取
+        if (
+          (this.isPhotographer && !this.photographerId) ||
+          (this.isRetoucher && !this.retoucherId)
+        ) {
+          console.log('从存储加载用户成功，但缺少角色ID，尝试获取角色ID')
+          await this.fetchUserRoleIds(this.userInfo!.userId)
         }
       }
 
@@ -164,7 +290,7 @@ export const useUserStore = defineStore('user', {
     },
 
     // 保存登录信息
-    saveLoginInfo(userData: UserInfo, token: string, remember: boolean = false) {
+    async saveLoginInfo(userData: UserInfo, token: string, remember: boolean = false) {
       // 确保所有字段都被完整保存，使用API返回的完整数据
       this.userInfo = {
         userId: userData.userId,
@@ -179,6 +305,10 @@ export const useUserStore = defineStore('user', {
         lastLogin: userData.lastLogin,
         followersCount: userData.followersCount,
         followingCount: userData.followingCount,
+        // 确保ID被正确格式化为数字
+        photographerId:
+          userData.photographerId !== undefined ? Number(userData.photographerId) : null,
+        retoucherId: userData.retoucherId !== undefined ? Number(userData.retoucherId) : null,
         token: token,
       }
 
@@ -195,11 +325,24 @@ export const useUserStore = defineStore('user', {
       storage.setItem('user', JSON.stringify(this.userInfo))
       storage.setItem('token', token)
 
-      console.log(`已存储完整用户数据至${remember ? 'localStorage' : 'sessionStorage'}`, {
+      console.log(`已存储基本用户数据至${remember ? 'localStorage' : 'sessionStorage'}`, {
         username: this.userInfo.username,
         roles: this.userInfo.roles,
-        fields: Object.keys(this.userInfo),
+        photographerId: this.userInfo.photographerId,
+        retoucherId: this.userInfo.retoucherId,
       })
+
+      // 如果用户有摄影师或修图师角色但ID未设置，获取相应的ID
+      if (
+        (this.isPhotographer && !this.userInfo.photographerId) ||
+        (this.isRetoucher && !this.userInfo.retoucherId)
+      ) {
+        console.log('用户有专业角色但ID未设置，尝试获取角色ID...')
+        const { photographerId, retoucherId } = await this.fetchUserRoleIds(this.userInfo.userId)
+
+        // 获取后再次保存到存储中
+        this.updateUserStorage()
+      }
     },
 
     // 清除用户数据（登出）
