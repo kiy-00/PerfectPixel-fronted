@@ -93,6 +93,21 @@ export const retoucherPortfolioAPI = {
     })
   },
 
+  // 获取修图师的公开作品集
+  getPublicPortfolios: (retoucherId: number) => {
+    return apiClient.get(`/retoucher-portfolios/retoucher/${retoucherId}/public`)
+  },
+
+  // 获取修图师的私密作品集(简化版)
+  getPrivatePortfolios: (retoucherId: number) => {
+    return apiClient.get(`/retoucher-portfolios/retoucher/${retoucherId}/private-simple`)
+  },
+
+  // 获取单个作品集详情
+  getPortfolioById: (portfolioId: number) => {
+    return apiClient.get(`/retoucher-portfolios/${portfolioId}`)
+  },
+
   // 更多修图作品集API可以在这里添加
 }
 

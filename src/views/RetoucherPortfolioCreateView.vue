@@ -226,6 +226,7 @@ import { defineComponent, reactive, ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/userStore'
 import { retoucherPortfolioAPI } from '../services/apiService'
+import { getAssetUrl } from '../utils/urlUtils'
 
 export default defineComponent({
   name: 'RetoucherPortfolioCreateView',
@@ -401,6 +402,9 @@ export default defineComponent({
       }
     }
 
+    // 添加新的静态资源URL引用
+    const staticBaseUrl = ref(import.meta.env.VITE_STATIC_ASSETS_URL)
+
     // 上传封面图片
     const uploadCoverImage = async () => {
       if (!formData.coverImageFile) {
@@ -426,6 +430,12 @@ export default defineComponent({
         )
 
         console.log('封面上传成功:', response.data)
+
+        // 可以选择显示上传后的图片
+        if (response.data && response.data.coverUrl) {
+          // 使用新的工具函数处理静态资源URL
+          formData.coverImageUrl = getAssetUrl(response.data.coverUrl)
+        }
 
         // 完成上传，显示最终成功页面
         createdPortfolioId.value = null
@@ -484,6 +494,7 @@ export default defineComponent({
       uploadCoverImage,
       skipCoverUpload,
       resetForm,
+      staticBaseUrl,
     }
   },
 })
