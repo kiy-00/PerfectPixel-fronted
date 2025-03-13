@@ -202,27 +202,80 @@
                     添加新作品
                   </span>
                 </button>
-                <button
-                  class="px-4 py-2 border border-primary text-primary rounded-md hover:bg-green-light hover:bg-opacity-10 transition-colors"
-                >
-                  <span class="flex items-center">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      class="h-4 w-4 mr-1"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"
-                      />
-                    </svg>
-                    更多操作
-                  </span>
-                </button>
+                <!-- 修改"更多操作"按钮为下拉菜单 -->
+                <div class="relative inline-block">
+                  <button
+                    @click="showMoreOptions = !showMoreOptions"
+                    class="px-4 py-2 border border-primary text-primary rounded-md hover:bg-green-light hover:bg-opacity-10 transition-colors"
+                  >
+                    <span class="flex items-center">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-4 w-4 mr-1"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"
+                        />
+                      </svg>
+                      更多操作
+                    </span>
+                  </button>
+                  <!-- 下拉菜单 -->
+                  <div
+                    v-if="showMoreOptions"
+                    class="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10"
+                  >
+                    <div class="py-1" role="menu">
+                      <button
+                        @click="openCoverUpload"
+                        class="flex items-center w-full px-4 py-2 text-sm text-neutral-dark hover:bg-green-light hover:bg-opacity-10"
+                        role="menuitem"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          class="h-4 w-4 mr-2"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                          />
+                        </svg>
+                        上传封面图片
+                      </button>
+                      <button
+                        class="flex items-center w-full px-4 py-2 text-sm text-neutral-dark hover:bg-green-light hover:bg-opacity-10"
+                        role="menuitem"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          class="h-4 w-4 mr-2"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                          />
+                        </svg>
+                        编辑作品集
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -629,11 +682,118 @@
         </div>
       </div>
     </div>
+
+    <!-- 添加封面上传模态框 -->
+    <div
+      v-if="showCoverUploadModal"
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+    >
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div class="p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold text-neutral-dark">上传作品集封面</h2>
+            <button @click="closeCoverUploadModal" class="text-neutral-dark hover:text-error">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+
+          <!-- 封面上传表单 -->
+          <form @submit.prevent="uploadCoverImage">
+            <!-- 错误提示 -->
+            <div
+              v-if="coverUploadError"
+              class="mb-4 p-3 bg-error bg-opacity-10 text-error rounded-md"
+            >
+              {{ coverUploadError }}
+            </div>
+
+            <!-- 封面图片 -->
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-neutral-dark mb-1">
+                封面图片 <span class="text-error">*</span>
+              </label>
+              <div class="border-2 border-dashed border-neutral rounded-md p-4 text-center">
+                <div v-if="coverImagePreview" class="mb-2">
+                  <img :src="coverImagePreview" class="max-h-40 mx-auto" alt="封面预览" />
+                  <button
+                    type="button"
+                    @click="removeCover"
+                    class="mt-2 text-error text-sm hover:underline"
+                  >
+                    移除
+                  </button>
+                </div>
+                <label v-else class="cursor-pointer flex flex-col items-center justify-center py-4">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-10 w-10 text-neutral-dark opacity-50 mb-2"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
+                  </svg>
+                  <span class="text-neutral-dark">点击选择封面图片</span>
+                  <input
+                    type="file"
+                    ref="coverImageInput"
+                    @change="handleCoverImageChange"
+                    accept="image/*"
+                    class="hidden"
+                    required
+                  />
+                </label>
+              </div>
+              <p class="text-xs text-neutral-dark mt-1">
+                建议选择横向图片，比例16:9最佳，最大文件大小5MB
+              </p>
+            </div>
+
+            <!-- 按钮区域 -->
+            <div class="flex justify-end space-x-3 mt-6">
+              <button
+                type="button"
+                @click="closeCoverUploadModal"
+                class="px-4 py-2 border border-neutral-dark text-neutral-dark rounded-md hover:bg-neutral hover:bg-opacity-10"
+              >
+                取消
+              </button>
+              <button
+                type="submit"
+                class="px-4 py-2 bg-primary text-white rounded-md hover:bg-green-dark"
+                :disabled="isCoverUploading || !coverImage"
+              >
+                <span v-if="isCoverUploading">上传中...</span>
+                <span v-else>上传封面</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, computed, onMounted } from 'vue'
+import { defineComponent, ref, computed, onMounted, onClickOutside } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '../stores/userStore'
 import { retoucherPortfolioAPI } from '../services/apiService'
@@ -987,6 +1147,108 @@ export default defineComponent({
       return result
     })
 
+    // 下拉菜单状态
+    const showMoreOptions = ref(false)
+
+    // 封面上传相关状态
+    const showCoverUploadModal = ref(false)
+    const isCoverUploading = ref(false)
+    const coverUploadError = ref('')
+    const coverImagePreview = ref('')
+    const coverImage = ref<File | null>(null)
+    const coverImageInput = ref<HTMLInputElement | null>(null)
+
+    // 处理封面图片选择
+    const handleCoverImageChange = (event: Event) => {
+      const input = event.target as HTMLInputElement
+      if (input.files && input.files[0]) {
+        const file = input.files[0]
+
+        // 验证文件大小（最大5MB）
+        if (file.size > 5 * 1024 * 1024) {
+          coverUploadError.value = '图片大小不能超过5MB'
+          return
+        }
+
+        coverImage.value = file
+
+        // 创建预览
+        const reader = new FileReader()
+        reader.onload = (e) => {
+          coverImagePreview.value = e.target?.result as string
+        }
+        reader.readAsDataURL(file)
+      }
+    }
+
+    // 移除封面图片
+    const removeCover = () => {
+      coverImage.value = null
+      coverImagePreview.value = ''
+      if (coverImageInput.value) {
+        coverImageInput.value.value = ''
+      }
+    }
+
+    // 关闭封面上传模态框
+    const closeCoverUploadModal = () => {
+      showCoverUploadModal.value = false
+      coverImage.value = null
+      coverImagePreview.value = ''
+      coverUploadError.value = ''
+    }
+
+    // 上传封面图片
+    const uploadCoverImage = async () => {
+      if (!portfolio.value || !coverImage.value) {
+        coverUploadError.value = '请选择封面图片'
+        return
+      }
+
+      try {
+        isCoverUploading.value = true
+        coverUploadError.value = ''
+
+        const portfolioId = portfolio.value.portfolioId
+
+        console.log(`准备上传封面图片到作品集 #${portfolioId}`)
+
+        // 调用API上传封面
+        const response = await retoucherPortfolioAPI.uploadCover(portfolioId, coverImage.value)
+        console.log('封面上传成功:', response.data)
+
+        // 关闭模态框
+        closeCoverUploadModal()
+
+        // 刷新作品集详情
+        await fetchPortfolioDetail()
+      } catch (err: any) {
+        console.error('上传封面图片失败:', err)
+
+        if (err.response?.status === 401) {
+          coverUploadError.value = '登录已过期，请重新登录'
+        } else if (err.response?.status === 403) {
+          coverUploadError.value = '您没有权限上传到此作品集'
+        } else if (err.response?.status === 400) {
+          coverUploadError.value = err.response.data.message || '请求参数错误'
+        } else {
+          coverUploadError.value = '上传失败，请稍后再试'
+        }
+      } finally {
+        isCoverUploading.value = false
+      }
+    }
+
+    // 点击外部关闭下拉菜单
+    onMounted(() => {
+      document.addEventListener('click', (event) => {
+        const target = event.target as HTMLElement
+        if (!target.closest('.relative') && showMoreOptions.value) {
+          showMoreOptions.value = false
+        }
+      })
+    })
+
     // 组件挂载时加载数据
     onMounted(async () => {
       console.log('组件挂载，开始初始化数据')
@@ -1035,6 +1297,12 @@ export default defineComponent({
       }
     })
 
+    // 在methods中添加
+    const openCoverUpload = () => {
+      showCoverUploadModal.value = true
+      showMoreOptions.value = false
+    }
+
     return {
       portfolio,
       loading,
@@ -1062,6 +1330,20 @@ export default defineComponent({
       removeAfter,
       uploadBeforeAfterImages,
       formattedPortfolioItems,
+      // 下拉菜单相关
+      showMoreOptions,
+      // 封面上传相关
+      showCoverUploadModal,
+      isCoverUploading,
+      coverUploadError,
+      coverImagePreview,
+      coverImage,
+      coverImageInput,
+      handleCoverImageChange,
+      removeCover,
+      closeCoverUploadModal,
+      uploadCoverImage,
+      openCoverUpload,
     }
   },
 })
