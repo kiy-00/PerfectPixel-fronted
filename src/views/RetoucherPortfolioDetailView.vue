@@ -273,6 +273,28 @@
                         </svg>
                         编辑作品集
                       </button>
+                      <!-- 添加删除作品集按钮 -->
+                      <button
+                        @click="openDeleteConfirmation"
+                        class="flex items-center w-full px-4 py-2 text-sm text-error hover:bg-error hover:bg-opacity-10"
+                        role="menuitem"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          class="h-4 w-4 mr-2"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
+                        </svg>
+                        删除作品集
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -789,6 +811,88 @@
         </div>
       </div>
     </div>
+
+    <!-- 添加删除确认模态框 -->
+    <div
+      v-if="showDeleteModal"
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+    >
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-md">
+        <div class="p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-bold text-neutral-dark">确认删除作品集</h2>
+            <button @click="closeDeleteModal" class="text-neutral-dark hover:text-error">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+
+          <div class="mb-6">
+            <div class="bg-error bg-opacity-10 p-4 rounded-md mb-4">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-6 w-6 text-error mx-auto mb-2"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
+              </svg>
+              <p class="text-center text-error font-medium">此操作不可撤销</p>
+            </div>
+
+            <p class="text-neutral-dark mb-2">
+              您确定要删除作品集 <span class="font-bold">{{ portfolio?.title }}</span> 吗？
+            </p>
+            <p class="text-sm text-neutral-dark">
+              删除作品集将同时删除其中包含的所有作品，这些数据将无法恢复。
+            </p>
+          </div>
+
+          <!-- 错误提示 -->
+          <div v-if="deleteError" class="mb-4 p-3 bg-error bg-opacity-10 text-error rounded-md">
+            {{ deleteError }}
+          </div>
+
+          <!-- 按钮区域 -->
+          <div class="flex justify-end space-x-3">
+            <button
+              type="button"
+              @click="closeDeleteModal"
+              class="px-4 py-2 border border-neutral-dark text-neutral-dark rounded-md hover:bg-neutral hover:bg-opacity-10"
+            >
+              取消
+            </button>
+            <button
+              type="button"
+              @click="confirmDelete"
+              class="px-4 py-2 bg-error text-white rounded-md hover:bg-opacity-80"
+              :disabled="isDeleting"
+            >
+              <span v-if="isDeleting">删除中...</span>
+              <span v-else>确认删除</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -1239,6 +1343,57 @@ export default defineComponent({
       }
     }
 
+    // 删除相关状态
+    const showDeleteModal = ref(false)
+    const isDeleting = ref(false)
+    const deleteError = ref('')
+
+    // 打开删除确认模态框
+    const openDeleteConfirmation = () => {
+      showDeleteModal.value = true
+      showMoreOptions.value = false
+    }
+
+    // 关闭删除确认模态框
+    const closeDeleteModal = () => {
+      showDeleteModal.value = false
+      deleteError.value = ''
+    }
+
+    // 确认删除作品集
+    const confirmDelete = async () => {
+      if (!portfolio.value) return
+
+      try {
+        isDeleting.value = true
+        deleteError.value = ''
+
+        const portfolioId = portfolio.value.portfolioId
+
+        console.log(`准备删除作品集 #${portfolioId}`)
+
+        // 调用API删除作品集
+        await retoucherPortfolioAPI.deletePortfolio(portfolioId)
+        console.log('作品集删除成功')
+
+        // 关闭模态框并跳转回作品集列表页面
+        closeDeleteModal()
+        router.push('/portfolio')
+      } catch (err: any) {
+        console.error('删除作品集失败:', err)
+
+        if (err.response?.status === 401) {
+          deleteError.value = '登录已过期，请重新登录'
+        } else if (err.response?.status === 403) {
+          deleteError.value = '您没有权限删除此作品集'
+        } else {
+          deleteError.value = '删除失败，请稍后再试'
+        }
+      } finally {
+        isDeleting.value = false
+      }
+    }
+
     // 点击外部关闭下拉菜单
     onMounted(() => {
       document.addEventListener('click', (event) => {
@@ -1344,6 +1499,13 @@ export default defineComponent({
       closeCoverUploadModal,
       uploadCoverImage,
       openCoverUpload,
+      // 删除相关
+      showDeleteModal,
+      isDeleting,
+      deleteError,
+      openDeleteConfirmation,
+      closeDeleteModal,
+      confirmDelete,
     }
   },
 })

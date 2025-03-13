@@ -117,6 +117,11 @@ export const retoucherPortfolioAPI = {
     })
   },
 
+  // 添加删除作品集的方法
+  deletePortfolio: (portfolioId: number) => {
+    return apiClient.delete(`/retoucher-portfolios/${portfolioId}`)
+  },
+
   // 更多修图作品集API可以在这里添加
 }
 

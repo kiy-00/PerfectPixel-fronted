@@ -113,13 +113,13 @@
               </button>
             </div>
 
-            <div class="ml-auto">
+            <!-- <div class="ml-auto">
               <button
                 class="px-4 py-2 bg-primary text-white rounded-md hover:bg-green-dark transition-colors"
               >
                 上传新作品
               </button>
-            </div>
+            </div> -->
           </div>
         </div>
 
@@ -470,7 +470,7 @@
       <!-- 添加调试信息 - 仅在开发环境显示 -->
       <div
         v-if="isDevelopment"
-        class="container mx-auto mt-4 p-4 bg-error bg-opacity-10 rounded-lg"
+        class="container mx-auto mt-4 p-4 bg-error bg-opacity-10 rounded-lg text-red"
       >
         <h3 class="font-bold text-error">调试信息:</h3>
         <p>用户是否是修图师: {{ userStore.isRetoucher ? '是' : '否' }}</p>
