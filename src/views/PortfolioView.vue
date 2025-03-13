@@ -317,7 +317,8 @@
         <div v-else-if="portfolioType === 'retouching' && userStore.isRetoucher">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <!-- 添加新作品按钮 -->
-            <div
+            <router-link
+              to="/portfolio/retoucher/create"
               class="bg-white rounded-lg shadow-md overflow-hidden flex flex-col items-center justify-center border-2 border-dashed border-green-light cursor-pointer hover:bg-green-light hover:bg-opacity-10 h-64"
             >
               <svg
@@ -335,7 +336,7 @@
                 />
               </svg>
               <span class="text-primary font-medium">添加新修图作品</span>
-            </div>
+            </router-link>
 
             <!-- 修图作品卡片 -->
             <div

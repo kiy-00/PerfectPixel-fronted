@@ -6,6 +6,7 @@ import HomeView from '../views/HomeView.vue'
 import RetouchingView from '../views/RetouchingView.vue'
 import UserProfileView from '../views/UserProfileView.vue'
 import PortfolioView from '../views/PortfolioView.vue'
+import RetoucherPortfolioCreateView from '../views/RetoucherPortfolioCreateView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -44,6 +45,15 @@ const router = createRouter({
       path: '/portfolio',
       name: 'portfolio',
       component: PortfolioView,
+    },
+    {
+      path: '/portfolio/retoucher/create',
+      name: 'retoucher-portfolio-create',
+      component: RetoucherPortfolioCreateView,
+      meta: {
+        requiresAuth: true,
+        requiresRetoucher: true,
+      },
     },
   ],
 })

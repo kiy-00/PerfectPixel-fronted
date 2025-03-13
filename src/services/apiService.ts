@@ -66,4 +66,34 @@ export const userAPI = {
   // 你可以在这里添加更多用户相关API
 }
 
+// 修图作品集相关API
+export const retoucherPortfolioAPI = {
+  // 创建修图作品集 - 更新参数类型确保category匹配后端枚举
+  create: (portfolioData: {
+    title: string
+    description: string
+    category: string // 值必须是: 'Portrait', 'Wedding', 'Fashion', 'Product', 'Event', 'Landscape', 'Other'
+    isPublic: boolean
+  }) => {
+    console.log('调用创建作品集API:', portfolioData)
+    return apiClient.post('/retoucher-portfolios', portfolioData)
+  },
+
+  // 上传作品集封面图片
+  uploadCover: (portfolioId: number, file: File) => {
+    // 创建FormData对象用于文件上传
+    const formData = new FormData()
+    formData.append('file', file)
+
+    // 注意这里需要特殊的headers配置，因为是文件上传
+    return apiClient.post(`/retoucher-portfolios/${portfolioId}/cover`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    })
+  },
+
+  // 更多修图作品集API可以在这里添加
+}
+
 export default apiClient
