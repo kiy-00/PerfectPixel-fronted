@@ -54,6 +54,12 @@
                 >
                   联系我
                 </button>
+                <button
+                  @click="handleLogout"
+                  class="bg-primary text-white px-4 py-2 rounded-md font-medium hover:bg-red-600 transition-colors"
+                >
+                  退出登录
+                </button>
               </div>
             </div>
           </div>
@@ -322,10 +328,12 @@
 import { defineComponent, ref, computed, onMounted } from 'vue'
 import { useUserStore } from '../stores/userStore'
 import { retoucherPortfolioAPI } from '../services/apiService.ts' // 确保路径正确
+import { useRouter } from 'vue-router'
 
 export default defineComponent({
   name: 'UserProfileView',
   setup() {
+    const router = useRouter()
     // 使用用户信息存储
     const userStore = useUserStore()
 
@@ -488,6 +496,11 @@ export default defineComponent({
       }
     }
 
+    const handleLogout = () => {
+      userStore.logout()
+      router.push('/')
+    }
+
     // 在组件挂载时获取用户资料
     onMounted(async () => {
       loading.value = true
@@ -520,6 +533,7 @@ export default defineComponent({
       photographyPortfolio,
       retoucherPublicPortfolios,
       fetchPublicRetoucherPortfolios,
+      handleLogout,
     }
   },
 })
