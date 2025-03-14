@@ -37,10 +37,19 @@ export function createPersistedState(
           ? paths.reduce((acc: any, path: string) => {
               const pathParts = path.split('.')
               let value = state
+              let validPath = true
+
+              // 安全地遍历路径，避免 undefined 的属性访问
               for (const part of pathParts) {
+                if (value === undefined || value === null) {
+                  validPath = false
+                  break
+                }
                 value = value[part]
               }
-              return { ...acc, [path]: value }
+
+              // 只有当路径有效时才添加到累积对象中
+              return validPath ? { ...acc, [path]: value } : acc
             }, {})
           : state
 

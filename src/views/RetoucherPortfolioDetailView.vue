@@ -41,11 +41,6 @@
                 v-if="portfolio.retoucherId === userStore.retoucherId"
                 class="flex items-center"
               >
-                <button
-                  class="px-4 py-2 bg-green-dark text-white rounded-md hover:bg-opacity-80 transition-colors mr-2"
-                >
-                  编辑作品集
-                </button>
               </span>
               <router-link
                 to="/portfolio"
