@@ -43,6 +43,7 @@ export const userAPI = {
     FirstName?: string
     LastName?: string
     PhoneNumber?: string
+    Biography?: string
     Roles?: string[]
   }) => {
     return apiClient.post('/User/register', registerData)

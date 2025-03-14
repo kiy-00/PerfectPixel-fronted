@@ -215,29 +215,31 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, reactive } from 'vue'
+import { defineComponent, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/userStore'
+import { usePhotographerCertificationStore } from '../stores/photographerCertificationStore'
 
 export default defineComponent({
   name: 'PhotographerPortfolioLinksView',
   setup() {
     const router = useRouter()
     const userStore = useUserStore()
+    const certStore = usePhotographerCertificationStore()
 
-    // 表单数据
+    // Take form data from store or initialize new
     const formData = reactive({
-      mainPortfolio: '',
-      instagram: '',
-      flickr: '',
-      fivehundredpx: '',
-      weibo: '',
-      portfolioDescription: '',
+      mainPortfolio: certStore.certificationData.mainPortfolio || '',
+      instagram: certStore.certificationData.instagram || '',
+      flickr: certStore.certificationData.flickr || '',
+      fivehundredpx: certStore.certificationData.fivehundredpx || '',
+      weibo: certStore.certificationData.weibo || '',
+      portfolioDescription: certStore.certificationData.portfolioDescription || '',
     })
 
-    // 提交表单
+    // Submit form
     const submitForm = () => {
-      // 表单验证
+      // Form validation
       if (!formData.mainPortfolio) {
         alert('请提供主要作品集链接')
         return
@@ -248,10 +250,17 @@ export default defineComponent({
         return
       }
 
-      // TODO: 提交表单数据到后端API
-      console.log('提交的表单数据:', formData)
+      // Save data to store
+      certStore.savePortfolioInfo({
+        mainPortfolio: formData.mainPortfolio,
+        instagram: formData.instagram,
+        flickr: formData.flickr,
+        fivehundredpx: formData.fivehundredpx,
+        weibo: formData.weibo,
+        portfolioDescription: formData.portfolioDescription,
+      })
 
-      // 导航到下一步
+      // Navigate to verification page
       router.push('/photographer-certification/verification')
     }
 

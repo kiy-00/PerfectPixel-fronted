@@ -225,36 +225,36 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, reactive } from 'vue'
+import { defineComponent, ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/userStore'
+import { usePhotographerCertificationStore } from '../stores/photographerCertificationStore'
 
 export default defineComponent({
   name: 'PhotographerVerificationView',
   setup() {
     const router = useRouter()
     const userStore = useUserStore()
+    const certStore = usePhotographerCertificationStore()
     const isConfirmed = ref(false)
     const isSubmitting = ref(false)
 
-    // 摄影师基本信息（实际项目中应从store获取或API请求）
+    // Use data from store
     const photographerInfo = reactive({
-      experience: 'advanced',
-      equipment: 'Canon EOS R5, 24-70mm f/2.8, 70-200mm f/2.8',
-      city: '上海',
-      specialties: ['portrait', 'wedding', 'street'],
-      bio: '专注人像摄影5年，擅长自然光与情绪表达，曾为多个品牌拍摄广告与产品图。',
+      experience: certStore.certificationData.experience,
+      equipment: certStore.certificationData.equipment,
+      city: certStore.certificationData.city,
+      specialties: certStore.certificationData.specialties,
+      bio: certStore.certificationData.bio,
     })
 
-    // 作品集信息（实际项目中应从store获取或API请求）
     const portfolioInfo = reactive({
-      mainPortfolio: 'https://portfolio.example.com/photos',
-      instagram: 'https://instagram.com/photographer',
-      flickr: '',
-      fivehundredpx: 'https://500px.com/photographer',
-      weibo: 'https://weibo.com/photographer',
-      portfolioDescription:
-        '我的作品风格注重光影与氛围的营造，擅长捕捉瞬间情绪和细节，希望通过影像传递温暖与力量。',
+      mainPortfolio: certStore.certificationData.mainPortfolio,
+      instagram: certStore.certificationData.instagram,
+      flickr: certStore.certificationData.flickr,
+      fivehundredpx: certStore.certificationData.fivehundredpx,
+      weibo: certStore.certificationData.weibo,
+      portfolioDescription: certStore.certificationData.portfolioDescription,
     })
 
     // 获取经验等级对应的文字
@@ -290,16 +290,10 @@ export default defineComponent({
 
       isSubmitting.value = true
       try {
-        // 这里应该有实际的API调用
-        console.log('提交摄影师认证申请:', {
-          photographer: photographerInfo,
-          portfolio: portfolioInfo,
-        })
+        // Call API through the store
+        await certStore.submitApplication()
 
-        // 模拟API调用
-        await new Promise((resolve) => setTimeout(resolve, 1000))
-
-        // 提交成功后跳转到成功页面
+        // Redirect to success page on successful submission
         router.push('/profile?certificationSubmitted=1')
       } catch (error) {
         console.error('提交申请失败:', error)

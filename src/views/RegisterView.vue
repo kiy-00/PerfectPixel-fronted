@@ -6,41 +6,13 @@
       <!-- 标题 -->
       <h1 class="text-3xl font-bold text-center mb-6 text-primary">账号注册</h1>
 
-      <!-- 注册选项切换 - tab栏样式 -->
-      <div class="flex justify-center mb-6">
-        <div class="w-full max-w-xs border border-green-light rounded-lg overflow-hidden">
-          <div class="flex">
-            <button
-              @click="registerMethod = 'username'"
-              :class="[
-                'flex-1 py-3 px-4 text-center font-medium transition-colors duration-200',
-                registerMethod === 'username'
-                  ? 'bg-primary text-white'
-                  : 'bg-white text-neutral-dark hover:bg-green-light hover:bg-opacity-20',
-              ]"
-            >
-              用户名注册
-            </button>
-            <button
-              @click="registerMethod = 'email'"
-              :class="[
-                'flex-1 py-3 px-4 text-center font-medium transition-colors duration-200',
-                registerMethod === 'email'
-                  ? 'bg-primary text-white'
-                  : 'bg-white text-neutral-dark hover:bg-green-light hover:bg-opacity-20',
-              ]"
-            >
-              邮箱注册
-            </button>
-          </div>
-        </div>
-      </div>
-
       <!-- 注册表单 -->
       <form @submit.prevent="handleSubmit" class="space-y-4">
         <!-- 用户名输入框 -->
         <div class="space-y-2">
-          <label for="username" class="block text-sm font-medium text-neutral-dark"> 用户名 </label>
+          <label for="username" class="block text-sm font-medium text-neutral-dark">
+            用户名 <span class="text-error">*</span>
+          </label>
           <div class="relative">
             <input
               type="text"
@@ -58,8 +30,10 @@
         </div>
 
         <!-- 邮箱输入框 -->
-        <div class="space-y-2" v-if="registerMethod === 'email'">
-          <label for="email" class="block text-sm font-medium text-neutral-dark"> 邮箱 </label>
+        <div class="space-y-2">
+          <label for="email" class="block text-sm font-medium text-neutral-dark">
+            邮箱 <span class="text-error">*</span>
+          </label>
           <div class="relative">
             <input
               type="email"
@@ -75,7 +49,9 @@
 
         <!-- 密码输入框 -->
         <div class="space-y-2">
-          <label for="password" class="block text-sm font-medium text-neutral-dark"> 密码 </label>
+          <label for="password" class="block text-sm font-medium text-neutral-dark">
+            密码 <span class="text-error">*</span>
+          </label>
           <div class="relative">
             <input
               :type="showPassword ? 'text' : 'password'"
@@ -100,7 +76,7 @@
         <!-- 确认密码输入框 -->
         <div class="space-y-2">
           <label for="confirmPassword" class="block text-sm font-medium text-neutral-dark">
-            确认密码
+            确认密码 <span class="text-error">*</span>
           </label>
           <div class="relative">
             <input
@@ -119,6 +95,70 @@
             >
               {{ showConfirmPassword ? '隐藏' : '显示' }}
             </button>
+          </div>
+        </div>
+
+        <!-- 名字输入框 -->
+        <div class="space-y-2">
+          <label for="firstName" class="block text-sm font-medium text-neutral-dark"> 名字 </label>
+          <div class="relative">
+            <input
+              type="text"
+              id="firstName"
+              name="firstName"
+              v-model="registerForm.firstName"
+              class="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-accent focus:border-green-accent bg-green-light bg-opacity-10"
+              placeholder="请输入名字（可选）"
+            />
+          </div>
+        </div>
+
+        <!-- 姓氏输入框 -->
+        <div class="space-y-2">
+          <label for="lastName" class="block text-sm font-medium text-neutral-dark"> 姓氏 </label>
+          <div class="relative">
+            <input
+              type="text"
+              id="lastName"
+              name="lastName"
+              v-model="registerForm.lastName"
+              class="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-accent focus:border-green-accent bg-green-light bg-opacity-10"
+              placeholder="请输入姓氏（可选）"
+            />
+          </div>
+        </div>
+
+        <!-- 手机号码输入框 -->
+        <div class="space-y-2">
+          <label for="phoneNumber" class="block text-sm font-medium text-neutral-dark">
+            手机号码
+          </label>
+          <div class="relative">
+            <input
+              type="tel"
+              id="phoneNumber"
+              name="phoneNumber"
+              v-model="registerForm.phoneNumber"
+              class="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-accent focus:border-green-accent bg-green-light bg-opacity-10"
+              placeholder="请输入手机号码（可选）"
+            />
+          </div>
+        </div>
+
+        <!-- 个人简介输入框 -->
+        <div class="space-y-2">
+          <label for="biography" class="block text-sm font-medium text-neutral-dark">
+            个人简介
+          </label>
+          <div class="relative">
+            <textarea
+              id="biography"
+              name="biography"
+              v-model="registerForm.biography"
+              rows="3"
+              class="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-accent focus:border-green-accent bg-green-light bg-opacity-10"
+              placeholder="请输入个人简介（可选）"
+            ></textarea>
           </div>
         </div>
 
@@ -183,9 +223,6 @@ export default defineComponent({
   setup() {
     const router = useRouter()
 
-    // 注册方式（用户名/邮箱）
-    const registerMethod = ref('username')
-
     // 密码显示控制
     const showPassword = ref(false)
     const showConfirmPassword = ref(false)
@@ -200,6 +237,10 @@ export default defineComponent({
       email: '',
       password: '',
       confirmPassword: '',
+      firstName: '',
+      lastName: '',
+      phoneNumber: '',
+      biography: '',
       agreement: false,
     })
 
@@ -220,18 +261,16 @@ export default defineComponent({
         return false
       }
 
-      // 邮箱验证（如果是邮箱注册）
-      if (registerMethod.value === 'email') {
-        if (!registerForm.email) {
-          errorMessage.value = '请输入邮箱'
-          return false
-        }
+      // 邮箱验证
+      if (!registerForm.email) {
+        errorMessage.value = '请输入邮箱'
+        return false
+      }
 
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-        if (!emailRegex.test(registerForm.email)) {
-          errorMessage.value = '邮箱格式不正确'
-          return false
-        }
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(registerForm.email)) {
+        errorMessage.value = '邮箱格式不正确'
+        return false
       }
 
       // 密码验证
@@ -274,11 +313,12 @@ export default defineComponent({
         // 准备请求数据
         const registerData = {
           Username: registerForm.username,
-          Email: registerForm.email || `${registerForm.username}@example.com`, // 如果没有邮箱，使用默认值
+          Email: registerForm.email,
           Password: registerForm.password,
-          FirstName: '', // 可选字段，设置为默认值
-          LastName: '', // 可选字段，设置为默认值
-          PhoneNumber: '', // 可选字段，设置为默认值
+          FirstName: registerForm.firstName,
+          LastName: registerForm.lastName,
+          PhoneNumber: registerForm.phoneNumber,
+          Biography: registerForm.biography,
           Roles: ['Regular'], // 默认注册为普通用户
         }
 
@@ -344,7 +384,6 @@ export default defineComponent({
     const goLogin = () => router.push('/login')
 
     return {
-      registerMethod,
       showPassword,
       showConfirmPassword,
       registerForm,
