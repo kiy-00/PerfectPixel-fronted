@@ -225,11 +225,12 @@
                   <p class="text-sm text-neutral-dark mb-6">
                     成为认证摄影师可以展示您的摄影作品集，接受约拍邀请
                   </p>
-                  <button
+                  <router-link
+                    to="/photographer-certification"
                     class="px-6 py-3 bg-primary text-white rounded-md hover:bg-green-dark transition-colors"
                   >
                     去认证摄影师
-                  </button>
+                  </router-link>
                 </div>
               </div>
 
