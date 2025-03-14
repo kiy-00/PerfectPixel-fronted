@@ -172,12 +172,12 @@
               <div v-if="activePortfolioTab === 'photography'">
                 <div class="flex justify-between items-center mb-6">
                   <h2 class="text-xl font-semibold text-neutral-dark">摄影作品集</h2>
-                  <button
+                  <!-- <button
                     v-if="isPhotographer"
                     class="text-primary hover:text-green-dark transition-colors"
                   >
                     查看全部
-                  </button>
+                  </button> -->
                 </div>
 
                 <!-- 摄影师角色验证 -->
@@ -237,58 +237,51 @@
               <div v-else-if="activePortfolioTab === 'retouching'">
                 <div class="flex justify-between items-center mb-6">
                   <h2 class="text-xl font-semibold text-neutral-dark">修图作品集</h2>
-                  <button
+                  <!-- <button
                     v-if="isRetoucher"
                     class="text-primary hover:text-green-dark transition-colors"
                   >
                     查看全部
-                  </button>
+                  </button> -->
                 </div>
 
                 <!-- 修图师角色验证 -->
                 <template v-if="isRetoucher">
                   <!-- 修图作品网格 -->
+                  <!-- 修图作品网格 -->
                   <div
-                    v-if="retouchingPortfolio.length > 0"
-                    class="grid grid-cols-1 sm:grid-cols-2 gap-6 lg:gap-8"
+                    v-if="retoucherPublicPortfolios.length > 0"
+                    class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
                   >
                     <div
-                      v-for="(work, index) in retouchingPortfolio"
-                      :key="index"
-                      class="group relative overflow-hidden rounded-lg"
+                      v-for="(portfolio, index) in retoucherPublicPortfolios.slice(0, 3)"
+                      :key="portfolio.portfolioId"
+                      class="group relative overflow-hidden rounded-lg aspect-square"
                     >
+                      <img
+                        :src="portfolio.coverImageUrl"
+                        :alt="portfolio.title"
+                        class="w-full h-full object-cover transition-transform group-hover:scale-105"
+                      />
                       <div
-                        class="flex flex-col md:flex-row gap-2 bg-neutral bg-opacity-10 p-3 rounded-lg"
+                        class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4"
                       >
-                        <!-- 修图前后对比 -->
-                        <div class="relative flex-1">
-                          <img
-                            :src="work.beforeImage"
-                            alt="修图前"
-                            class="w-full aspect-square object-cover rounded-md"
-                          />
-                          <div
-                            class="absolute top-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded"
-                          >
-                            修图前
-                          </div>
-                        </div>
-
-                        <div class="relative flex-1">
-                          <img
-                            :src="work.afterImage"
-                            alt="修图后"
-                            class="w-full aspect-square object-cover rounded-md"
-                          />
-                          <div
-                            class="absolute top-2 left-2 bg-primary text-white text-xs px-2 py-1 rounded"
-                          >
-                            修图后
-                          </div>
+                        <div class="text-white">
+                          <h3 class="font-medium">{{ portfolio.title }}</h3>
+                          <p class="text-sm text-green-light">{{ portfolio.category }}</p>
                         </div>
                       </div>
-                      <h3 class="font-medium mt-2">{{ work.title }}</h3>
-                      <p class="text-sm text-neutral-dark">{{ work.description }}</p>
+                    </div>
+                    <!-- 如果作品集不足三个，添加占位元素 -->
+                    <div
+                      v-for="i in Math.max(0, 3 - retoucherPublicPortfolios.length)"
+                      :key="`placeholder-${i}`"
+                      class="bg-neutral bg-opacity-20 rounded-lg aspect-square flex items-center justify-center"
+                    >
+                      <div class="text-neutral-dark text-center">
+                        <div class="text-3xl mb-2">+</div>
+                        <div>添加更多作品集</div>
+                      </div>
                     </div>
                   </div>
 
@@ -327,6 +320,7 @@
 <script lang="ts">
 import { defineComponent, ref, computed, onMounted } from 'vue'
 import { useUserStore } from '../stores/userStore'
+import { retoucherPortfolioAPI } from '../services/apiService.ts' // 确保路径正确
 
 export default defineComponent({
   name: 'UserProfileView',
@@ -416,21 +410,44 @@ export default defineComponent({
       },
     ])
 
-    // 修图作品集数据
-    const retouchingPortfolio = ref([
-      {
-        title: '人像磨皮精修',
-        description: '专业人像精修，自然肤色和质感',
-        beforeImage: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330',
-        afterImage: 'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e',
-      },
-      {
-        title: '风景照片调色',
-        description: '增强色彩和对比度，突出主体',
-        beforeImage: 'https://images.unsplash.com/photo-1504257432389-52343af06ae3',
-        afterImage: 'https://images.unsplash.com/photo-1511765224389-37f0e77cf0eb',
-      },
-    ])
+    const retoucherPublicPortfolios = ref([])
+
+    // 添加获取修图师作品集的方法
+    // 添加获取修图师作品集的方法
+    const fetchPublicRetoucherPortfolios = async () => {
+      if (userStore.retoucherId) {
+        try {
+          console.log('开始获取修图师作品集, retoucherId:', userStore.retoucherId)
+          const response = await retoucherPortfolioAPI.getPublicPortfolios(userStore.retoucherId)
+          console.log('修图师作品集API响应:', response.data)
+
+          // 检查并处理图片路径
+          retoucherPublicPortfolios.value = response.data.map((portfolio) => {
+            // 检查图片路径是否以 http 开头，如果不是则添加基础URL
+            const apiBaseUrl = import.meta.env.VITE_STATIC_ASSETS_URL || ''
+
+            // 创建完整的封面图片URL
+            const coverImageUrl = portfolio.coverImageUrl.startsWith('http')
+              ? portfolio.coverImageUrl
+              : `${apiBaseUrl}${portfolio.coverImageUrl}`
+
+            console.log('处理前封面URL:', portfolio.coverImageUrl)
+            console.log('处理后封面URL:', coverImageUrl)
+
+            return {
+              ...portfolio,
+              coverImageUrl: coverImageUrl,
+            }
+          })
+
+          console.log('处理后的作品集数据:', retoucherPublicPortfolios.value)
+        } catch (err) {
+          console.error('获取修图师作品集失败:', err)
+        }
+      } else {
+        console.warn('未找到修图师ID，无法获取作品集')
+      }
+    }
 
     // 格式化日期
     const formatDate = (dateString?: string) => {
@@ -482,6 +499,11 @@ export default defineComponent({
       } else {
         loading.value = false
       }
+
+      // 如果用户是修图师，获取作品集
+      if (isRetoucher.value) {
+        await fetchPublicRetoucherPortfolios()
+      }
     })
 
     return {
@@ -495,7 +517,8 @@ export default defineComponent({
       isPhotographer,
       isRetoucher,
       photographyPortfolio,
-      retouchingPortfolio,
+      retoucherPublicPortfolios,
+      fetchPublicRetoucherPortfolios,
     }
   },
 })
