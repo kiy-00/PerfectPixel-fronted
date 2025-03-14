@@ -5,7 +5,7 @@
 
       <!-- 2D Carousel -->
       <div
-        class="relative w-full max-w-3xl mx-auto h-80 mb-16 overflow-hidden rounded-lg shadow-xl"
+        class="relative w-full max-w-4xl mx-auto h-120 mb-16 overflow-hidden rounded-lg shadow-xl"
       >
         <!-- Carousel Images -->
         <div
@@ -85,11 +85,11 @@ export default defineComponent({
     let autoplayInterval: number | null = null
 
     const slides = [
-      { image: 'https://via.placeholder.com/800x400', category: 'Nature' },
-      { image: 'https://via.placeholder.com/800x400', category: 'Portrait' },
-      { image: 'https://via.placeholder.com/800x400', category: 'Wedding' },
-      { image: 'https://via.placeholder.com/800x400', category: 'Fashion' },
-      { image: 'https://via.placeholder.com/800x400', category: 'Commercial' },
+      { image: '/images/carousel/nature.jpg', category: '自然风景' },
+      { image: '/images/carousel/portrait.jpg', category: '人像摄影' },
+      { image: '/images/carousel/wedding.jpg', category: '婚礼摄影' },
+      { image: '/images/carousel/fashion.jpg', category: '时尚摄影' },
+      { image: '/images/carousel/commercial.jpg', category: '商业摄影' },
     ]
 
     const goToSlide = (index: number) => {
