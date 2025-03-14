@@ -58,24 +58,49 @@ export const usePhotographerCertificationStore = defineStore('photographerCertif
       if (certificationData.fivehundredpx) portfolioLinks.push(certificationData.fivehundredpx)
       if (certificationData.weibo) portfolioLinks.push(certificationData.weibo)
 
+      // Ensure we have all required data
+      if (!certificationData.experience) {
+        throw new Error('缺少摄影经验信息，请返回第一步填写')
+      }
+
+      if (!certificationData.equipment || certificationData.equipment.trim() === '') {
+        throw new Error('缺少摄影设备信息，请返回第一步填写')
+      }
+
+      if (!certificationData.city || certificationData.city.trim() === '') {
+        throw new Error('缺少所在城市信息，请返回第一步填写')
+      }
+
+      if (certificationData.specialties.length === 0) {
+        throw new Error('缺少擅长领域信息，请返回第一步填写')
+      }
+
+      if (!certificationData.bio || certificationData.bio.trim() === '') {
+        throw new Error('缺少个人简介信息，请返回第一步填写')
+      }
+
+      if (portfolioLinks.length === 0) {
+        throw new Error('缺少作品集链接，请返回第二步填写')
+      }
+
+      if (
+        !certificationData.portfolioDescription ||
+        certificationData.portfolioDescription.trim() === ''
+      ) {
+        throw new Error('缺少作品集描述，请返回第二步填写')
+      }
+
       // Format data for API - match exactly what the backend expects
       const requestData = {
-        roleType: 'Photographer', // 确保这个枚举值与后端定义匹配
+        roleType: 'Photographer',
         applicationData: {
-          // 确保每个字段都有值，防止无效请求
-          experience: certificationData.experience || '未指定',
-          equipment: certificationData.equipment || '未指定',
-          specialties:
-            certificationData.specialties.length > 0
-              ? certificationData.specialties.join(',')
-              : '未指定',
-          city: certificationData.city || '未指定',
-          bio: certificationData.bio || '未指定',
-          portfolio:
-            portfolioLinks.length > 0
-              ? portfolioLinks.join(', ')
-              : certificationData.mainPortfolio || '未提供',
-          portfolioDescription: certificationData.portfolioDescription || '未提供',
+          experience: certificationData.experience,
+          equipment: certificationData.equipment,
+          specialties: certificationData.specialties.join(','),
+          city: certificationData.city,
+          bio: certificationData.bio,
+          portfolio: portfolioLinks.join(', '),
+          portfolioDescription: certificationData.portfolioDescription,
         },
       }
 

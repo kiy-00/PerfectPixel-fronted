@@ -87,7 +87,7 @@
 
             <!-- 社交媒体链接 -->
             <div class="mb-6">
-              <label class="block text-neutral-dark mb-4">社交媒体链接（至少填写一个）</label>
+              <label class="block text-neutral-dark mb-4">社交媒体链接（可选填）</label>
 
               <!-- Instagram -->
               <div class="mb-4">
@@ -239,14 +239,41 @@ export default defineComponent({
 
     // Submit form
     const submitForm = () => {
-      // Form validation
+      // 表单验证
       if (!formData.mainPortfolio) {
         alert('请提供主要作品集链接')
         return
       }
 
-      if (!formData.instagram && !formData.flickr && !formData.fivehundredpx && !formData.weibo) {
-        alert('请至少提供一个社交媒体链接')
+      // 确保是有效的URL
+      try {
+        new URL(formData.mainPortfolio)
+      } catch (e) {
+        alert('请提供有效的主要作品集链接')
+        return
+      }
+
+      // 社交媒体链接可选但如果填写需要是有效URL
+      const socialLinks = [
+        { url: formData.instagram, name: 'Instagram' },
+        { url: formData.flickr, name: 'Flickr' },
+        { url: formData.fivehundredpx, name: '500px' },
+        { url: formData.weibo, name: '微博' },
+      ]
+
+      for (const link of socialLinks) {
+        if (link.url) {
+          try {
+            new URL(link.url)
+          } catch (e) {
+            alert(`请提供有效的${link.name}链接`)
+            return
+          }
+        }
+      }
+
+      if (!formData.portfolioDescription.trim()) {
+        alert('请填写作品集描述')
         return
       }
 

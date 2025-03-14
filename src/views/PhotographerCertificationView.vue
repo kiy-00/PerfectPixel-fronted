@@ -60,41 +60,55 @@
           <h2 class="text-xl font-semibold text-neutral-dark mb-6">摄影师信息</h2>
 
           <form @submit.prevent="submitForm">
-            <!-- 姓名 -->
+            <!-- 经验程度 -->
             <div class="mb-6">
-              <label for="fullName" class="block text-neutral-dark mb-2"
-                >真实姓名 <span class="text-error">*</span></label
-              >
-              <input
-                type="text"
-                id="fullName"
-                v-model="formData.fullName"
-                class="w-full px-4 py-2 border border-neutral rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                required
-                placeholder="请输入您的真实姓名"
-              />
+              <label class="block text-neutral-dark mb-2">
+                摄影经验 <span class="text-error">*</span>
+              </label>
+              <div class="grid grid-cols-2 gap-3 text-primary">
+                <div
+                  v-for="option in experienceOptions"
+                  :key="option.value"
+                  :class="[
+                    'border rounded-md px-4 py-3 cursor-pointer flex items-center justify-between',
+                    formData.experience === option.value
+                      ? 'border-primary bg-green-light bg-opacity-20'
+                      : 'border-neutral hover:border-primary',
+                  ]"
+                  @click="formData.experience = option.value"
+                >
+                  <span>{{ option.label }}</span>
+                  <input
+                    type="radio"
+                    :id="option.value"
+                    :value="option.value"
+                    v-model="formData.experience"
+                    class="ml-2"
+                  />
+                </div>
+              </div>
             </div>
 
-            <!-- 电话号码 -->
+            <!-- 摄影设备 -->
             <div class="mb-6">
-              <label for="phone" class="block text-neutral-dark mb-2"
-                >联系电话 <span class="text-error">*</span></label
-              >
-              <input
-                type="tel"
-                id="phone"
-                v-model="formData.phone"
+              <label for="equipment" class="block text-neutral-dark mb-2">
+                摄影设备 <span class="text-error">*</span>
+              </label>
+              <textarea
+                id="equipment"
+                v-model="formData.equipment"
+                rows="2"
                 class="w-full px-4 py-2 border border-neutral rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                 required
-                placeholder="请输入您的联系电话"
-              />
+                placeholder="请描述您常用的摄影设备（如：相机型号、镜头等）"
+              ></textarea>
             </div>
 
             <!-- 城市 -->
             <div class="mb-6">
-              <label for="city" class="block text-neutral-dark mb-2"
-                >所在城市 <span class="text-error">*</span></label
-              >
+              <label for="city" class="block text-neutral-dark mb-2">
+                所在城市 <span class="text-error">*</span>
+              </label>
               <input
                 type="text"
                 id="city"
@@ -107,10 +121,10 @@
 
             <!-- 擅长领域 -->
             <div class="mb-6">
-              <label class="block text-neutral-dark mb-2"
-                >擅长领域 <span class="text-error">*</span></label
-              >
-              <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <label class="block text-neutral-dark mb-2">
+                擅长领域 <span class="text-error">*</span>
+              </label>
+              <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-primary">
                 <div
                   v-for="field in specialtyFields"
                   :key="field.value"
@@ -138,9 +152,9 @@
 
             <!-- 个人简介 -->
             <div class="mb-6">
-              <label for="bio" class="block text-neutral-dark mb-2"
-                >个人简介 <span class="text-error">*</span></label
-              >
+              <label for="bio" class="block text-neutral-dark mb-2">
+                个人简介 <span class="text-error">*</span>
+              </label>
               <textarea
                 id="bio"
                 v-model="formData.bio"
@@ -150,8 +164,6 @@
                 placeholder="请描述您的摄影经验、风格特点等"
               ></textarea>
             </div>
-
-            <!-- 移除作品集链接部分 -->
 
             <!-- 提交按钮 -->
             <div class="flex justify-end">
@@ -184,23 +196,33 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, reactive } from 'vue'
+import { defineComponent, ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/userStore'
+import { usePhotographerCertificationStore } from '../stores/photographerCertificationStore'
 
 export default defineComponent({
   name: 'PhotographerCertificationView',
   setup() {
     const router = useRouter()
     const userStore = useUserStore()
+    const certStore = usePhotographerCertificationStore()
+
+    // 经验选项
+    const experienceOptions = [
+      { label: '入门级（1年以下）', value: 'beginner' },
+      { label: '进阶级（1-3年）', value: 'intermediate' },
+      { label: '专业级（3-5年）', value: 'advanced' },
+      { label: '资深级（5年以上）', value: 'expert' },
+    ]
 
     // 表单数据
     const formData = reactive({
-      experience: '',
-      equipment: '',
-      city: '',
-      specialties: [] as string[],
-      bio: '',
+      experience: certStore.certificationData.experience || 'beginner',
+      equipment: certStore.certificationData.equipment || '',
+      city: certStore.certificationData.city || '',
+      specialties: [...certStore.certificationData.specialties] || [],
+      bio: certStore.certificationData.bio || '',
     })
 
     // 擅长领域选项
@@ -226,25 +248,50 @@ export default defineComponent({
       }
     }
 
-    // 移除了身份证上传相关函数
-
     // 提交表单
     const submitForm = () => {
-      // 这里可以添加表单验证逻辑
+      // 表单验证
+      if (!formData.experience) {
+        alert('请选择摄影经验')
+        return
+      }
+
+      if (!formData.equipment.trim()) {
+        alert('请填写摄影设备')
+        return
+      }
+
+      if (!formData.city.trim()) {
+        alert('请填写所在城市')
+        return
+      }
+
       if (formData.specialties.length === 0) {
         alert('请至少选择一个擅长领域')
         return
       }
 
-      // TODO: 提交表单数据到后端API
-      console.log('提交的表单数据:', formData)
+      if (!formData.bio.trim()) {
+        alert('请填写个人简介')
+        return
+      }
 
-      // 导航到上传作品集链接页面
+      // 保存数据到store
+      certStore.saveBasicInfo({
+        experience: formData.experience,
+        equipment: formData.equipment,
+        city: formData.city,
+        specialties: formData.specialties,
+        bio: formData.bio,
+      })
+
+      // 导航到作品集链接页面
       router.push('/photographer-certification/portfolio-links')
     }
 
     return {
       formData,
+      experienceOptions,
       specialtyFields,
       toggleSpecialty,
       submitForm,
