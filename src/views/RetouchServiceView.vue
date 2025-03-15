@@ -292,11 +292,11 @@ export default defineComponent({
       }
     }
 
-    // 选择修图师创建订单
+    // 选择修图师导航到用户详情页
     const selectRetoucher = (retoucher: RetoucherCardData) => {
-      // 导航到修图师详情页面
+      // 导航到用户详情页面，使用userId
       router.push({
-        path: `/retoucher/${retoucher.id}`,
+        path: `/user/${retoucher.userId}`,
       })
     }
 
@@ -332,11 +332,12 @@ export default defineComponent({
 
           return {
             id: r.retoucherId,
+            userId: r.userId, // 保存userId
             name: fullName,
             price: r.pricePerPhoto,
             categories: categories,
             description: r.bio,
-            coverImage: `https://avatars.dicebear.com/api/initials/${encodeURIComponent(r.username)}.svg`, // 使用头像生成API
+            coverImage: `https://avatars.dicebear.com/api/initials/${encodeURIComponent(r.username)}.svg`,
             experience: 'advanced', // 默认经验级别
           }
         })

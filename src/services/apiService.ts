@@ -30,7 +30,7 @@ export const userAPI = {
   // 登录 - 确保请求与后端API预期相匹配
   login: (usernameOrEmail: string, password: string) => {
     return apiClient.post('/User/login', {
-      usernameOrEmail: usernameOrEmail, // 匹配后端接口的参数命名
+      usernameOrEmail: usernameOrEmail,
       password: password,
     })
   },
@@ -61,6 +61,11 @@ export const userAPI = {
   // 获取用户的修图师ID
   getRetoucherId: (userId: number) => {
     return apiClient.get(`/User/${userId}/retoucher-id`)
+  },
+
+  // 获取指定用户的公开信息
+  getUserPublicProfile: (userId: number) => {
+    return apiClient.get(`/User/${userId}`)
   },
 
   // 你可以在这里添加更多用户相关API
@@ -138,6 +143,16 @@ export const retoucherPortfolioAPI = {
   // 更多修图作品集API可以在这里添加
 }
 
+// 摄影作品集相关API
+export const photographerPortfolioAPI = {
+  // 获取摄影师的公开作品集
+  getPublicPortfolios: (photographerId: number) => {
+    return apiClient.get(`/photographer-portfolios/photographer/${photographerId}/public`)
+  },
+
+  // 更多摄影作品集API可以在这里添加
+}
+
 // 修图师相关API
 export const retoucherAPI = {
   // 获取所有已验证的修图师
@@ -170,7 +185,22 @@ export const retoucherAPI = {
     return apiClient.get(`/Retoucher/search/v2`, { params })
   },
 
+  // 获取单个修图师信息
+  getRetoucherById: (retoucherId: number) => {
+    return apiClient.get(`/Retoucher/${retoucherId}`)
+  },
+
   // 其他修图师相关API可以在这里添加
+}
+
+// 摄影师相关API
+export const photographerAPI = {
+  // 获取单个摄影师信息
+  getPhotographerById: (photographerId: number) => {
+    return apiClient.get(`/Photographer/${photographerId}`)
+  },
+
+  // 其他摄影师相关API可以在这里添加
 }
 
 export default apiClient

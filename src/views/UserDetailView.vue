@@ -37,6 +37,7 @@
             <!-- 用户基本信息 -->
             <div class="mt-4 md:mt-0 text-center md:text-left">
               <h1 class="text-3xl font-bold">{{ user.name }}</h1>
+              <p class="text-sm text-green-light">@{{ user.username }}</p>
               <p class="text-green-light mt-1">
                 <span v-if="user.isRetoucher">专业修图师</span>
                 <span v-if="user.isRetoucher && user.isPhotographer"> · </span>
@@ -381,9 +382,16 @@
 <script lang="ts">
 import { defineComponent, ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import {
+  userAPI,
+  retoucherAPI,
+  photographerAPI,
+  retoucherPortfolioAPI,
+  photographerPortfolioAPI,
+} from '../services/apiService'
 
 export default defineComponent({
-  name: 'UserDetailView', // 更新组件名称
+  name: 'UserDetailView',
   setup() {
     const route = useRoute()
     const router = useRouter()
@@ -392,63 +400,44 @@ export default defineComponent({
     const error = ref('')
     const activePortfolioTab = ref('retouching')
 
-    // 根据URL参数判断用户初始展示的作品集类型
+    // 获取userId参数
     const userId = parseInt(route.params.id as string)
 
-    // 统一的用户信息对象
+    // 用户信息对象
     const user = ref({
       id: userId,
-      name: '李摄影',
-      createdAt: '2023-06-15T12:00:00Z',
-      lastActive: '2023-11-10T09:30:00Z',
-      city: '上海',
-      bio: '热爱摄影和修图的专业创作者',
-      completedOrders: 156,
-      portfolioCount: 22,
-      followers: 253,
-      following: 87,
+      name: '',
+      username: '',
+      createdAt: '',
+      lastActive: '',
+      city: '',
+      bio: '',
+      completedOrders: 0,
+      portfolioCount: 0,
+      followers: 0,
+      following: 0,
 
       // 角色标识
-      isRetoucher: true,
-      isPhotographer: true,
+      isRetoucher: false,
+      isPhotographer: false,
 
       // 修图师专属信息
       retoucherInfo: {
-        categories: ['人像精修', '婚礼精修', '时尚精修', '产品精修'],
-        experience: 'expert',
-        software: 'Photoshop、Lightroom、Capture One',
-        bio: '专业修图师，从事人像、时尚摄影修图10年，擅长皮肤精修、色彩调整和创意合成。曾为多个时尚品牌提供专业修图服务，追求完美细节和自然效果。',
-        pricePerPhoto: 50,
+        categories: [],
+        experience: '',
+        software: '',
+        bio: '',
+        pricePerPhoto: 0,
       },
 
       // 摄影师专属信息
       photographerInfo: {
-        categories: ['人像摄影', '风光摄影', '婚礼摄影', '时尚摄影'],
-        experience: 'advanced',
-        equipment: 'Canon EOS R5, 24-70mm F2.8L, 70-200mm F2.8L, 50mm F1.2L',
-        bio: '专注于人像与风光摄影，擅长捕捉自然光线和情感表达。曾获多项摄影大赛奖项，作品见于多本摄影杂志。',
-        pricePerHour: 500,
+        categories: [],
+        experience: '',
+        equipment: '',
+        bio: '',
+        pricePerHour: 0,
       },
-    })
-
-    // 根据用户角色设置初始选项卡
-    onMounted(() => {
-      // 如果用户是摄影师也是修图师，根据URL参数选择初始标签
-      if (user.value.isRetoucher && user.value.isPhotographer) {
-        const defaultTab = route.query.tab as string
-        if (defaultTab === 'photography') {
-          activePortfolioTab.value = 'photography'
-        } else {
-          // 默认展示修图作品
-          activePortfolioTab.value = 'retouching'
-        }
-      } else if (user.value.isPhotographer) {
-        // 只是摄影师
-        activePortfolioTab.value = 'photography'
-      } else {
-        // 只是修图师或其他情况
-        activePortfolioTab.value = 'retouching'
-      }
     })
 
     // 修图作品集数据
@@ -541,6 +530,203 @@ export default defineComponent({
       },
     ])
 
+    // 获取用户资料的函数
+    const fetchUserProfile = async () => {
+      loading.value = true
+      error.value = ''
+
+      try {
+        // 使用userId请求用户详情
+        console.log('获取用户信息，userId:', userId)
+        const response = await userAPI.getUserPublicProfile(userId)
+
+        console.log('获取到用户数据:', response.data)
+
+        // 更新用户基本信息
+        const userData = response.data
+        user.value = {
+          ...user.value,
+          username: userData.username,
+          name:
+            `${userData.firstName || ''} ${userData.lastName || ''}`.trim() || userData.username,
+          createdAt: userData.createdAt,
+          lastActive: userData.lastLogin || userData.createdAt,
+          city: userData.city || '未知',
+          bio: userData.biography || '这个用户很懒，还没有填写个人简介',
+
+          // 检查用户角色
+          isRetoucher: userData.roles?.includes('Retoucher') || false,
+          isPhotographer: userData.roles?.includes('Photographer') || false,
+        }
+
+        // 如果用户是修图师，获取修图师信息
+        if (user.value.isRetoucher) {
+          await fetchRetoucherInfo(userId)
+        }
+
+        // 如果用户是摄影师，获取摄影师信息
+        if (user.value.isPhotographer) {
+          await fetchPhotographerInfo(userId)
+        }
+
+        // 设置初始激活的作品集标签
+        setInitialActiveTab()
+
+        loading.value = false
+      } catch (err: any) {
+        console.error('获取用户信息失败:', err)
+        error.value = '获取用户信息失败，请稍后再试'
+        loading.value = false
+      }
+    }
+
+    // 获取修图师详情
+    const fetchRetoucherInfo = async (userId: number) => {
+      try {
+        // 先获取retoucherId
+        const retoucherIdResponse = await userAPI.getRetoucherId(userId)
+        const retoucherId = retoucherIdResponse.data.retoucherId
+
+        // 获取修图师详情
+        const retoucherResponse = await retoucherAPI.getRetoucherById(retoucherId)
+        const retoucherData = retoucherResponse.data
+
+        // 更新修图师信息
+        user.value.retoucherInfo = {
+          categories: retoucherData.expertise.split('、').map((item: string) => item.trim()),
+          experience: getExperienceLevel(retoucherData.experience || 0),
+          software: retoucherData.software,
+          bio: retoucherData.bio,
+          pricePerPhoto: retoucherData.pricePerPhoto,
+        }
+
+        // 获取修图作品集
+        await fetchRetoucherPortfolios(retoucherId)
+      } catch (err) {
+        console.error('获取修图师信息失败:', err)
+      }
+    }
+
+    // 获取摄影师详情
+    const fetchPhotographerInfo = async (userId: number) => {
+      try {
+        // 先获取photographerId
+        const photographerIdResponse = await userAPI.getPhotographerId(userId)
+        const photographerId = photographerIdResponse.data.photographerId
+
+        // 获取摄影师详情
+        const photographerResponse = await photographerAPI.getPhotographerById(photographerId)
+        const photographerData = photographerResponse.data
+
+        // 更新摄影师信息
+        user.value.photographerInfo = {
+          categories:
+            photographerData.specialties?.split(',').map((item: string) => item.trim()) || [],
+          experience: getExperienceLevel(photographerData.experience || 0),
+          equipment: photographerData.equipment,
+          bio: photographerData.bio,
+          pricePerHour: photographerData.hourlyRate || 0,
+        }
+
+        // 获取摄影作品集
+        await fetchPhotographyPortfolios(photographerId)
+      } catch (err) {
+        console.error('获取摄影师信息失败:', err)
+      }
+    }
+
+    // 获取修图师作品集
+    const fetchRetoucherPortfolios = async (retoucherId: number) => {
+      try {
+        const response = await retoucherPortfolioAPI.getPublicPortfolios(retoucherId)
+
+        // 这里需要对作品集数据进行处理，格式化为前端需要的结构
+        // retoucherPortfolios.value = ...处理逻辑...
+      } catch (err) {
+        console.error('获取修图作品集失败:', err)
+      }
+    }
+
+    // 获取摄影作品集
+    const fetchPhotographyPortfolios = async (photographerId: number) => {
+      try {
+        const response = await photographerPortfolioAPI.getPublicPortfolios(photographerId)
+
+        // 这里需要对作品集数据进行处理，格式化为前端需要的结构
+        // photographyPortfolios.value = ...处理逻辑...
+      } catch (err) {
+        console.error('获取摄影作品集失败:', err)
+      }
+    }
+
+    // 根据经验年数返回级别
+    const getExperienceLevel = (years: number) => {
+      if (years < 1) return 'beginner'
+      if (years < 3) return 'intermediate'
+      if (years < 5) return 'advanced'
+      return 'expert'
+    }
+
+    // 设置初始激活的标签页
+    const setInitialActiveTab = () => {
+      // 如果用户是摄影师也是修图师，根据URL参数选择初始标签
+      if (user.value.isRetoucher && user.value.isPhotographer) {
+        const defaultTab = route.query.tab as string
+        if (defaultTab === 'photography') {
+          activePortfolioTab.value = 'photography'
+        } else {
+          // 默认展示修图作品
+          activePortfolioTab.value = 'retouching'
+        }
+      } else if (user.value.isPhotographer) {
+        // 只是摄影师
+        activePortfolioTab.value = 'photography'
+      } else if (user.value.isRetoucher) {
+        // 只是修图师
+        activePortfolioTab.value = 'retouching'
+      }
+    }
+
+    // 创建修图订单
+    const createRetouchOrder = () => {
+      // 获取retoucherId并导航到创建订单页面
+      userAPI
+        .getRetoucherId(userId)
+        .then((response) => {
+          const retoucherId = response.data.retoucherId
+          router.push({
+            path: '/create-retouch-order',
+            query: { retoucherId: retoucherId.toString() },
+          })
+        })
+        .catch((err) => {
+          console.error('获取修图师ID失败:', err)
+          alert('无法创建订单，请稍后再试')
+        })
+    }
+
+    // 创建约拍订单
+    const createPhotoshootOrder = () => {
+      // 获取photographerId并导航到创建订单页面
+      userAPI
+        .getPhotographerId(userId)
+        .then((response) => {
+          const photographerId = response.data.photographerId
+          router.push({
+            path: '/create-photoshoot-order',
+            query: { photographerId: photographerId.toString() },
+          })
+        })
+        .catch((err) => {
+          console.error('获取摄影师ID失败:', err)
+          alert('无法创建订单，请稍后再试')
+        })
+    }
+
+    onMounted(() => {
+      fetchUserProfile()
+    })
+
     // 格式化日期
     const formatDate = (dateString?: string) => {
       if (!dateString) return '暂无数据'
@@ -568,49 +754,6 @@ export default defineComponent({
       }
       return experienceMap[experience] || experience
     }
-
-    // 创建修图订单
-    const createRetouchOrder = () => {
-      router.push({
-        path: '/create-retouch-order',
-        query: { retoucherId: user.value.id.toString() },
-      })
-    }
-
-    // 创建约拍订单
-    const createPhotoshootOrder = () => {
-      router.push({
-        path: '/create-photoshoot-order',
-        query: { photographerId: user.value.id.toString() },
-      })
-    }
-
-    const fetchUserProfile = async () => {
-      loading.value = true
-      error.value = ''
-
-      try {
-        // 这里会替换为实际的API调用
-        // 模拟API调用延迟
-        await new Promise((resolve) => setTimeout(resolve, 800))
-
-        // 实际项目中这里会是API返回的数据
-        // 现在我们使用示例数据，已经在上面定义好了
-
-        // 根据查询参数判断用户角色并加载相应的作品
-        // 在实际API中，会根据用户ID查询该用户的所有角色和相关作品
-
-        loading.value = false
-      } catch (err: any) {
-        console.error('获取用户信息失败:', err)
-        error.value = '获取用户信息失败，请稍后再试'
-        loading.value = false
-      }
-    }
-
-    onMounted(() => {
-      fetchUserProfile()
-    })
 
     return {
       loading,

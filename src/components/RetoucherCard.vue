@@ -65,6 +65,7 @@ import { useRouter } from 'vue-router'
 // 为UI定义的修图师数据接口
 export interface RetoucherCardData {
   id: number
+  userId: number // 添加userId字段
   name: string
   price: number
   categories: string[]
@@ -89,9 +90,9 @@ export default defineComponent({
       emit('select', props.retoucher)
     }
 
-    // Fix: Update to use the correct route name 'user-detail' instead of 'RetoucherDetail'
+    // 更新导航方法，使用userId而非retoucherId
     const navigateToDetail = () => {
-      router.push({ name: 'user-detail', params: { id: props.retoucher.id } })
+      router.push({ name: 'user-detail', params: { id: props.retoucher.userId.toString() } })
     }
 
     return {
