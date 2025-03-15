@@ -294,10 +294,9 @@ export default defineComponent({
 
     // 选择修图师创建订单
     const selectRetoucher = (retoucher: RetoucherCardData) => {
-      // 这里可以导航到创建订单页面，并传递修图师信息
+      // 导航到修图师详情页面
       router.push({
-        path: '/create-retouch-order',
-        query: { retoucherId: retoucher.id.toString() },
+        path: `/retoucher/${retoucher.id}`,
       })
     }
 

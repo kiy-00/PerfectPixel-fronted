@@ -106,6 +106,12 @@ const router = createRouter({
       name: 'RetouchService',
       component: () => import('../views/RetouchServiceView.vue'),
     },
+    {
+      path: '/user/:id',
+      name: 'user-detail',
+      component: () => import('../views/UserDetailView.vue'),
+      props: true,
+    },
   ],
 })
 

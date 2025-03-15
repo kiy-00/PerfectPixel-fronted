@@ -1,5 +1,8 @@
 <template>
-  <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+  <div
+    class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
+    @click="navigateToDetail"
+  >
     <!-- 修图师封面图像 -->
     <div class="h-48 overflow-hidden relative">
       <img
@@ -45,7 +48,7 @@
           <div class="text-lg font-bold text-primary">¥{{ retoucher.price }}</div>
         </div>
         <button
-          @click="selectRetoucher"
+          @click.stop="selectRetoucher"
           class="px-4 py-2 bg-primary text-white rounded-md hover:bg-green-dark transition-colors"
         >
           选择修图师
@@ -57,6 +60,7 @@
 
 <script lang="ts">
 import { defineComponent, PropType } from 'vue'
+import { useRouter } from 'vue-router'
 
 // 为UI定义的修图师数据接口
 export interface RetoucherCardData {
@@ -79,12 +83,20 @@ export default defineComponent({
     },
   },
   setup(props, { emit }) {
+    const router = useRouter()
+
     const selectRetoucher = () => {
       emit('select', props.retoucher)
     }
 
+    // Fix: Update to use the correct route name 'user-detail' instead of 'RetoucherDetail'
+    const navigateToDetail = () => {
+      router.push({ name: 'user-detail', params: { id: props.retoucher.id } })
+    }
+
     return {
       selectRetoucher,
+      navigateToDetail,
     }
   },
 })
