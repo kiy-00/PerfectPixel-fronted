@@ -69,9 +69,10 @@
                   联系TA
                 </button>
                 <button
+                  @click="toggleFollow"
                   class="bg-transparent border border-white text-white px-4 py-2 rounded-md font-medium hover:bg-green-dark transition-colors"
                 >
-                  关注
+                  {{ user.isFollowedByCurrentUser ? '取消关注' : '关注' }}
                 </button>
               </div>
             </div>
@@ -288,12 +289,25 @@
 
                 <!-- 修图作品集列表 -->
                 <div class="mb-8">
-                  <div v-for="(portfolio, index) in retoucherPortfolios" :key="index" class="mb-8">
+                  <div
+                    v-for="(portfolio, index) in retoucherPortfolios"
+                    :key="portfolio.id"
+                    class="mb-8"
+                  >
                     <h3 class="text-lg font-semibold text-primary mb-3">{{ portfolio.title }}</h3>
                     <p class="text-sm text-neutral-dark mb-4">{{ portfolio.description }}</p>
 
+                    <!-- 如果没有修图前后对比项，显示封面图 -->
+                    <div v-if="portfolio.items.length === 0" class="mb-4">
+                      <img
+                        :src="portfolio.coverImage"
+                        :alt="portfolio.title"
+                        class="w-full max-h-80 object-cover rounded-lg"
+                      />
+                    </div>
+
                     <!-- 修图前后对比展示 -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div
                         v-for="(item, itemIndex) in portfolio.items"
                         :key="itemIndex"
@@ -416,6 +430,7 @@ export default defineComponent({
       portfolioCount: 0,
       followers: 0,
       following: 0,
+      isFollowedByCurrentUser: false, // 新增是否已关注状态
 
       // 角色标识
       isRetoucher: false,
@@ -441,48 +456,7 @@ export default defineComponent({
     })
 
     // 修图作品集数据
-    const retoucherPortfolios = ref([
-      {
-        id: 1,
-        title: '人像精修合集',
-        description: '各种风格的人像修图作品，注重皮肤质感和色彩表现。',
-        category: 'Portrait',
-        items: [
-          {
-            id: 101,
-            beforeImage:
-              'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=500&h=500&fit=crop',
-            afterImage:
-              'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=500&h=500&fit=crop',
-            description: '自然风格人像精修，提亮肤色，保持自然质感',
-          },
-          {
-            id: 102,
-            beforeImage:
-              'https://images.unsplash.com/photo-1554151228-14d9def656e4?w=500&h=500&fit=crop',
-            afterImage:
-              'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=500&h=500&fit=crop',
-            description: '时尚风格修图，增强对比度和色彩表现',
-          },
-        ],
-      },
-      {
-        id: 2,
-        title: '产品摄影精修',
-        description: '各类产品精修作品，注重细节展示和质感表达。',
-        category: 'Product',
-        items: [
-          {
-            id: 201,
-            beforeImage:
-              'https://images.unsplash.com/photo-1491637639811-60e2756cc1c7?w=500&h=500&fit=crop',
-            afterImage:
-              'https://images.unsplash.com/photo-1560343090-f0409e92791a?w=500&h=500&fit=crop',
-            description: '产品精修，提升质感和细节，调整色彩平衡',
-          },
-        ],
-      },
-    ])
+    const retoucherPortfolios = ref([])
 
     // 摄影作品集数据
     const photographyPortfolios = ref([
@@ -553,6 +527,9 @@ export default defineComponent({
           lastActive: userData.lastLogin || userData.createdAt,
           city: userData.city || '未知',
           bio: userData.biography || '这个用户很懒，还没有填写个人简介',
+          followers: userData.followersCount || 0,
+          following: userData.followingCount || 0,
+          isFollowedByCurrentUser: userData.isFollowedByCurrentUser || false, // 从API响应中获取关注状态
 
           // 检查用户角色
           isRetoucher: userData.roles?.includes('Retoucher') || false,
@@ -638,12 +615,51 @@ export default defineComponent({
     // 获取修图师作品集
     const fetchRetoucherPortfolios = async (retoucherId: number) => {
       try {
+        console.log('获取修图师作品集, retoucherId:', retoucherId)
         const response = await retoucherPortfolioAPI.getPublicPortfolios(retoucherId)
+        console.log('修图师作品集API响应:', response.data)
 
-        // 这里需要对作品集数据进行处理，格式化为前端需要的结构
-        // retoucherPortfolios.value = ...处理逻辑...
+        // 处理API返回的数据
+        if (response.data && Array.isArray(response.data)) {
+          // 创建图片URL的辅助函数，处理相对路径
+          const createFullImageUrl = (imageUrl: string) => {
+            if (!imageUrl) return ''
+            if (imageUrl.startsWith('http')) return imageUrl
+
+            // 使用环境变量中配置的静态资源URL
+            const staticAssetsUrl = import.meta.env.VITE_STATIC_ASSETS_URL || ''
+            return `${staticAssetsUrl}${imageUrl}`
+          }
+
+          // 转换作品集数据为我们需要的格式
+          retoucherPortfolios.value = response.data.map((portfolio) => {
+            // 查找修图前后对比项
+            const beforeAfterItems = portfolio.items
+              .filter((item) => item.isBeforeImage && item.afterImage)
+              .map((item) => ({
+                id: item.itemId,
+                beforeImage: createFullImageUrl(item.imageUrl),
+                afterImage: createFullImageUrl(item.afterImageUrl),
+                description: item.description || '修图对比',
+              }))
+
+            return {
+              id: portfolio.portfolioId,
+              title: portfolio.title,
+              description: portfolio.description,
+              category: portfolio.category,
+              coverImage: createFullImageUrl(portfolio.coverImageUrl),
+              thumbnailUrl: createFullImageUrl(portfolio.coverThumbnailUrl),
+              createdAt: portfolio.createdAt,
+              updatedAt: portfolio.updatedAt,
+              items: beforeAfterItems,
+            }
+          })
+
+          console.log('处理后的作品集数据:', retoucherPortfolios.value)
+        }
       } catch (err) {
-        console.error('获取修图作品集失败:', err)
+        console.error('获取修图师作品集失败:', err)
       }
     }
 
@@ -695,7 +711,7 @@ export default defineComponent({
         .then((response) => {
           const retoucherId = response.data.retoucherId
           router.push({
-            path: '/create-retouch-order',
+            path: '/upload-photos',
             query: { retoucherId: retoucherId.toString() },
           })
         })
@@ -721,6 +737,30 @@ export default defineComponent({
           console.error('获取摄影师ID失败:', err)
           alert('无法创建订单，请稍后再试')
         })
+    }
+
+    // 关注/取消关注用户
+    const toggleFollow = async () => {
+      try {
+        if (user.value.isFollowedByCurrentUser) {
+          // 如果已关注，则取消关注
+          await userAPI.unfollowUser(userId)
+          user.value.isFollowedByCurrentUser = false
+          // 粉丝数减1
+          if (user.value.followers > 0) {
+            user.value.followers -= 1
+          }
+        } else {
+          // 如果未关注，则关注
+          await userAPI.followUser(userId)
+          user.value.isFollowedByCurrentUser = true
+          // 粉丝数加1
+          user.value.followers += 1
+        }
+      } catch (error) {
+        console.error('关注/取消关注操作失败:', error)
+        alert('操作失败，请稍后再试')
+      }
     }
 
     onMounted(() => {
@@ -767,6 +807,7 @@ export default defineComponent({
       createRetouchOrder,
       createPhotoshootOrder,
       fetchUserProfile,
+      toggleFollow,
     }
   },
 })

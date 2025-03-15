@@ -112,6 +112,13 @@ const router = createRouter({
       component: () => import('../views/UserDetailView.vue'),
       props: true,
     },
+    {
+      path: '/upload-photos',
+      name: 'upload-photos',
+      component: () => import('../views/UploadPhotosView.vue'),
+      props: (route) => ({ retoucherId: Number(route.query.retoucherId) }),
+      meta: { requiresAuth: true },
+    },
   ],
 })
 

@@ -68,6 +68,16 @@ export const userAPI = {
     return apiClient.get(`/User/${userId}`)
   },
 
+  // 关注用户
+  followUser: (userId: number) => {
+    return apiClient.post(`/Follow/${userId}`)
+  },
+
+  // 取消关注用户
+  unfollowUser: (userId: number) => {
+    return apiClient.delete(`/Follow/${userId}`)
+  },
+
   // 你可以在这里添加更多用户相关API
 }
 
