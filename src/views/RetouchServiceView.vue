@@ -23,7 +23,7 @@
     <!-- 搜索和筛选区域 -->
     <div class="container mx-auto px-4 pt-8">
       <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-        <div class="flex flex-col md:flex-row md:items-center md:space-x-4">
+        <div class="flex flex-col md:flex-row md:items-center md:space-x-4 mb-5">
           <!-- 搜索框 -->
           <div class="flex-grow mb-4 md:mb-0">
             <div class="relative">
@@ -61,23 +61,43 @@
           </button>
         </div>
 
-        <!-- 筛选器 -->
-        <div class="mt-6">
-          <h3 class="text-lg font-medium text-neutral-dark mb-3">按专业领域筛选</h3>
-          <div class="flex flex-wrap gap-2">
-            <button
-              v-for="category in categories"
-              :key="category.value"
-              @click="toggleCategory(category.value)"
-              :class="[
-                'px-4 py-2 rounded-full border transition-colors',
-                selectedCategories.includes(category.value)
-                  ? 'bg-primary text-white border-primary'
-                  : 'bg-white text-neutral-dark border-neutral hover:border-primary',
-              ]"
-            >
-              {{ category.label }}
-            </button>
+        <!-- 价格区间筛选 -->
+        <div>
+          <div class="flex items-center mb-2">
+            <h3 class="text-neutral-dark mr-2">价格区间:</h3>
+            <div class="flex items-center space-x-2">
+              <input
+                type="number"
+                v-model.number="minPrice"
+                min="0"
+                placeholder="最低价格"
+                class="w-24 px-3 py-1 border border-neutral rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              <span class="text-neutral-dark">至</span>
+              <input
+                type="number"
+                v-model.number="maxPrice"
+                min="0"
+                placeholder="最高价格"
+                class="w-24 px-3 py-1 border border-neutral rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              <button
+                @click="applyPriceFilter"
+                class="ml-2 px-3 py-1 bg-primary text-white text-sm rounded-md hover:bg-green-dark transition-colors"
+              >
+                应用
+              </button>
+              <button
+                v-if="isPriceFilterActive"
+                @click="clearPriceFilter"
+                class="px-3 py-1 bg-neutral text-neutral-dark text-sm rounded-md hover:bg-neutral-light transition-colors"
+              >
+                清除
+              </button>
+            </div>
+          </div>
+          <div v-if="isPriceFilterActive" class="text-xs text-primary">
+            当前筛选: ¥{{ minPrice || 0 }} - ¥{{ maxPrice || '不限' }}
           </div>
         </div>
       </div>
@@ -97,10 +117,8 @@
               @change="sortRetouchers"
               class="border border-neutral rounded-md py-1 px-2 focus:outline-none focus:ring-2 focus:ring-primary text-sm"
             >
-              <option value="rating">评分最高</option>
               <option value="price-low">价格从低到高</option>
               <option value="price-high">价格从高到低</option>
-              <option value="experience">经验丰富度</option>
             </select>
           </div>
         </div>
@@ -176,7 +194,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, onMounted } from 'vue'
+import { defineComponent, ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { retoucherAPI } from '../services/apiService'
 import RetoucherCard, { RetoucherCardData } from '../components/RetoucherCard.vue'
@@ -204,37 +222,37 @@ export default defineComponent({
   setup() {
     const router = useRouter()
     const searchQuery = ref('')
-    const selectedCategories = ref<string[]>([])
-    const sortOption = ref('rating')
+    const sortOption = ref('price-low') // 默认排序改为按价格从低到高
     const isLoading = ref(true)
     const retouchers = ref<RetoucherCardData[]>([])
+
+    // 价格筛选
+    const minPrice = ref<number | null>(null)
+    const maxPrice = ref<number | null>(null)
+    const isPriceFilterActive = computed(() => minPrice.value !== null || maxPrice.value !== null)
 
     // 分页相关
     const currentPage = ref(1)
     const totalPages = ref(1)
-    const pageSize = 12
+    const pageSize = ref(12)
 
-    // 模拟的分类数据
-    const categories = [
-      { label: '人像精修', value: 'portraitRetouch' },
-      { label: '婚礼照片', value: 'weddingRetouch' },
-      { label: '风景照片', value: 'landscapeRetouch' },
-      { label: '时尚修图', value: 'fashionRetouch' },
-      { label: '产品图片', value: 'productRetouch' },
-      { label: '美食照片', value: 'foodRetouch' },
-      { label: '皮肤修饰', value: 'skinRetouch' },
-      { label: '建筑照片', value: 'architectureRetouch' },
-      { label: '广告图片', value: 'advertisingRetouch' },
-    ]
-
-    // 切换分类筛选
-    const toggleCategory = (category: string) => {
-      if (selectedCategories.value.includes(category)) {
-        selectedCategories.value = selectedCategories.value.filter((cat) => cat !== category)
-      } else {
-        selectedCategories.value.push(category)
+    // 应用价格筛选
+    const applyPriceFilter = () => {
+      // 验证价格区间
+      if (minPrice.value !== null && maxPrice.value !== null && minPrice.value > maxPrice.value) {
+        alert('最低价格不能高于最高价格')
+        return
       }
-      // 重新搜索
+
+      // 重置到第一页并搜索
+      currentPage.value = 1
+      fetchRetouchers()
+    }
+
+    // 清除价格筛选
+    const clearPriceFilter = () => {
+      minPrice.value = null
+      maxPrice.value = null
       currentPage.value = 1
       fetchRetouchers()
     }
@@ -250,18 +268,10 @@ export default defineComponent({
       // 对本地数据进行排序
       const sortMethod = sortOption.value
       retouchers.value.sort((a, b) => {
-        if (sortMethod === 'rating') {
-          return b.rating - a.rating
-        } else if (sortMethod === 'price-low') {
+        if (sortMethod === 'price-low') {
           return a.price - b.price
         } else if (sortMethod === 'price-high') {
           return b.price - a.price
-        } else if (sortMethod === 'experience') {
-          const expMap = { beginner: 1, intermediate: 2, advanced: 3, expert: 4 }
-          return (
-            expMap[b.experience as keyof typeof expMap] -
-            expMap[a.experience as keyof typeof expMap]
-          )
         }
         return 0
       })
@@ -294,11 +304,24 @@ export default defineComponent({
     // 获取修图师数据
     const fetchRetouchers = async () => {
       isLoading.value = true
-
       try {
-        // 调用API获取已验证的修图师数据
-        const response = await retoucherAPI.getVerifiedRetouchers()
+        console.log('开始获取修图师数据')
+        console.log('当前搜索条件:', {
+          searchQuery: searchQuery.value,
+          minPrice: minPrice.value,
+          maxPrice: maxPrice.value,
+        })
+
+        // 使用新的V2接口，同时处理关键词和价格筛选
+        const response = await retoucherAPI.searchRetouchersV2(
+          searchQuery.value.trim(),
+          minPrice.value || undefined,
+          maxPrice.value || undefined,
+        )
+
+        console.log('API响应成功:', response.status)
         const retouchersData: RetoucherData[] = response.data
+        console.log(`获取到${retouchersData.length}位修图师数据`)
 
         // 将API数据转换为UI需要的格式
         const transformedData: RetoucherCardData[] = retouchersData.map((r) => {
@@ -311,7 +334,6 @@ export default defineComponent({
           return {
             id: r.retoucherId,
             name: fullName,
-            rating: 5.0, // 默认评分
             price: r.pricePerPhoto,
             categories: categories,
             description: r.bio,
@@ -320,41 +342,35 @@ export default defineComponent({
           }
         })
 
-        // 过滤和分页逻辑
-        let filtered = [...transformedData]
-
-        // 根据搜索词过滤
-        if (searchQuery.value) {
-          const query = searchQuery.value.toLowerCase()
-          filtered = filtered.filter(
-            (r) =>
-              r.name.toLowerCase().includes(query) || r.description.toLowerCase().includes(query),
-          )
-        }
-
-        // 根据分类过滤
-        if (selectedCategories.value.length > 0) {
-          filtered = filtered.filter((r) =>
-            selectedCategories.value.some((cat) => {
-              const catLabel = categories.find((c) => c.value === cat)?.label || ''
-              return r.categories.some((c) => c.toLowerCase().includes(catLabel.toLowerCase()))
-            }),
-          )
-        }
+        console.log(`转换后共有${transformedData.length}位修图师数据`)
 
         // 计算总页数
-        totalPages.value = Math.max(1, Math.ceil(filtered.length / pageSize))
+        totalPages.value = Math.max(1, Math.ceil(transformedData.length / pageSize.value))
 
         // 分页
-        const start = (currentPage.value - 1) * pageSize
-        const end = start + pageSize
-        retouchers.value = filtered.slice(start, end)
+        const start = (currentPage.value - 1) * pageSize.value
+        const end = start + pageSize.value
+        retouchers.value = transformedData.slice(start, end)
 
         // 应用排序
         sortRetouchers()
       } catch (error) {
         console.error('获取修图师数据失败:', error)
+        // 增加更详细的错误信息
+        if (axios.isAxiosError(error)) {
+          console.error('API错误详情:', {
+            status: error.response?.status,
+            statusText: error.response?.statusText,
+            data: error.response?.data,
+            config: {
+              url: error.config?.url,
+              method: error.config?.method,
+              params: error.config?.params,
+            },
+          })
+        }
         retouchers.value = [] // 清空数据
+        totalPages.value = 1
       } finally {
         isLoading.value = false
       }
@@ -367,15 +383,17 @@ export default defineComponent({
 
     return {
       searchQuery,
-      selectedCategories,
       sortOption,
-      categories,
+      minPrice,
+      maxPrice,
+      isPriceFilterActive,
       retouchers,
       isLoading,
       currentPage,
       totalPages,
-      toggleCategory,
       searchRetouchers,
+      applyPriceFilter,
+      clearPriceFilter,
       sortRetouchers,
       nextPage,
       prevPage,

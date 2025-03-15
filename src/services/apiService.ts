@@ -142,7 +142,32 @@ export const retoucherPortfolioAPI = {
 export const retoucherAPI = {
   // 获取所有已验证的修图师
   getVerifiedRetouchers: () => {
+    console.log('调用getVerifiedRetouchers API')
     return apiClient.get('/Retoucher?verifiedOnly=true')
+  },
+
+  // 搜索修图师 v2 - 支持价格区间过滤
+  searchRetouchersV2: (keyword: string, minPrice?: number, maxPrice?: number) => {
+    console.log('调用searchRetouchersV2 API, 参数:', { keyword, minPrice, maxPrice })
+
+    // 构建查询参数, keyword是必填字段
+    const params: any = {
+      keyword: keyword || ' ', // 如果没有关键词，传递空格字符作为占位符
+      verifiedOnly: true,
+    }
+
+    // 添加可选的价格参数
+    if (minPrice !== undefined && minPrice !== null) {
+      params.minPrice = minPrice
+    }
+
+    if (maxPrice !== undefined && maxPrice !== null) {
+      params.maxPrice = maxPrice
+    }
+
+    console.log('发送给后端的参数:', params)
+
+    return apiClient.get(`/Retoucher/search/v2`, { params })
   },
 
   // 其他修图师相关API可以在这里添加
