@@ -43,7 +43,6 @@ export const userAPI = {
     FirstName?: string
     LastName?: string
     PhoneNumber?: string
-    Biography?: string
     Roles?: string[]
   }) => {
     return apiClient.post('/User/register', registerData)
@@ -137,6 +136,16 @@ export const retoucherPortfolioAPI = {
   },
 
   // 更多修图作品集API可以在这里添加
+}
+
+// 修图师相关API
+export const retoucherAPI = {
+  // 获取所有已验证的修图师
+  getVerifiedRetouchers: () => {
+    return apiClient.get('/Retoucher?verifiedOnly=true')
+  },
+
+  // 其他修图师相关API可以在这里添加
 }
 
 export default apiClient

@@ -309,11 +309,12 @@
                   <p class="text-sm text-neutral-dark mb-6">
                     成为认证修图师可以展示您的修图技术，接受修图订单
                   </p>
-                  <button
+                  <router-link
+                    to="/retoucher-certification"
                     class="px-6 py-3 bg-primary text-white rounded-md hover:bg-green-dark transition-colors"
                   >
                     去认证修图师
-                  </button>
+                  </router-link>
                 </div>
               </div>
             </div>

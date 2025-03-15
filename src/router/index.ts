@@ -83,6 +83,29 @@ const router = createRouter({
       component: PhotographerVerificationView,
       meta: { requiresAuth: true },
     },
+    {
+      path: '/retoucher-certification',
+      name: 'RetoucherCertification',
+      component: () => import('../views/RetoucherCertificationView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/retoucher-certification/portfolio-links',
+      name: 'RetoucherPortfolioLinks',
+      component: () => import('../views/RetoucherPortfolioLinksView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/retoucher-certification/verification',
+      name: 'RetoucherVerification',
+      component: () => import('../views/RetoucherVerificationView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/retouch-service',
+      name: 'RetouchService',
+      component: () => import('../views/RetouchServiceView.vue'),
+    },
   ],
 })
 
