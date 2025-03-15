@@ -119,6 +119,23 @@ const router = createRouter({
       props: (route) => ({ retoucherId: Number(route.query.retoucherId) }),
       meta: { requiresAuth: true },
     },
+    {
+      path: '/create-retouch-order',
+      name: 'create-retouch-order',
+      component: () => import('../views/CreateRetouchOrderView.vue'),
+      props: (route) => ({
+        retoucherId: Number(route.query.retoucherId),
+        photoId: route.query.photoId,
+      }),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/retouch-order-confirm',
+      name: 'retouch-order-confirm',
+      component: () => import('../views/RetouchOrderConfirmView.vue'),
+      props: true,
+      meta: { requiresAuth: true },
+    },
   ],
 })
 
