@@ -59,11 +59,23 @@
         <div class="bg-white rounded-lg shadow-md p-6 mb-6">
           <h2 class="text-xl font-semibold text-neutral-dark mb-4">照片预览</h2>
           <div class="flex justify-center">
-            <!-- 如果有真实照片数据，可以替换为真实照片 -->
+            <!-- 显示上一步上传的临时照片 -->
+            <div v-if="photoUrl" class="max-w-md w-full">
+              <div class="flex flex-col">
+                <img :src="photoUrl" class="rounded-lg w-full max-h-64 object-contain" />
+                <div class="mt-4">
+                  <h3 class="font-semibold text-neutral-dark">{{ photoTitle }}</h3>
+                  <p class="text-sm text-neutral-dark mt-1">{{ photoDescription }}</p>
+                  <p class="text-xs text-neutral-dark mt-2">临时照片ID: {{ photoId }}</p>
+                </div>
+              </div>
+            </div>
+            <!-- 如果没有照片数据，显示占位符 -->
             <div
+              v-else
               class="w-full max-w-md h-64 bg-neutral bg-opacity-20 rounded-lg flex items-center justify-center"
             >
-              <p class="text-neutral-dark">照片预览（实际项目中显示上传的照片）</p>
+              <p class="text-neutral-dark">照片预览（无法获取照片数据，请返回上一步）</p>
             </div>
           </div>
         </div>
@@ -124,7 +136,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref } from 'vue'
+import { defineComponent, ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 
 export default defineComponent({
@@ -136,10 +148,46 @@ export default defineComponent({
     // 从URL获取参数
     const retoucherId = Number(route.query.retoucherId)
     const photoId = route.query.photoId as string
+    const photoUrl = route.query.photoUrl as string
+    // 解码从URL获取的标题和描述
+    const photoTitle = ref(decodeURIComponent((route.query.photoTitle as string) || ''))
+    const photoDescription = ref(decodeURIComponent((route.query.photoDescription as string) || ''))
 
-    // 订单表单数据 - 只保留requirements字段
+    console.log('加载照片信息:', {
+      retoucherId,
+      photoId,
+      photoUrl,
+      photoTitle: photoTitle.value,
+      photoDescription: photoDescription.value,
+    })
+
+    // 检查是否有所有必要的参数
+    if (!retoucherId || !photoId || !photoUrl) {
+      console.error('缺少必要参数:', { retoucherId, photoId, photoUrl })
+    }
+
+    // 订单表单数据 - 简化版
     const orderForm = ref({
       requirements: '',
+    })
+
+    // 从本地存储读取之前可能保存的订单数据
+    onMounted(() => {
+      try {
+        const savedFormData = localStorage.getItem('retouch-order-form-data')
+        if (savedFormData) {
+          const parsedData = JSON.parse(savedFormData)
+          // 只有当photoId匹配时才恢复数据
+          if (parsedData.photoId === photoId) {
+            orderForm.value.requirements = parsedData.requirements || ''
+            console.log('从本地存储恢复订单表单数据:', parsedData)
+          } else {
+            console.log('本地存储的订单数据与当前照片不匹配，不恢复')
+          }
+        }
+      } catch (error) {
+        console.error('恢复表单数据失败:', error)
+      }
     })
 
     // 表单提交
@@ -150,13 +198,29 @@ export default defineComponent({
         return
       }
 
-      // 构建订单信息对象 - 使用固定价格
+      // 保存表单数据到本地存储
+      localStorage.setItem(
+        'retouch-order-form-data',
+        JSON.stringify({
+          photoId,
+          requirements: orderForm.value.requirements,
+          savedAt: new Date().toISOString(),
+        }),
+      )
+      console.log('保存订单表单数据到本地存储')
+
+      // 构建订单信息对象
       const orderInfo = {
         retoucherId,
         photoId,
-        ...orderForm.value,
-        price: 50, // 使用基础价格
+        requirements: orderForm.value.requirements,
+        // 传递照片信息
+        photoUrl,
+        photoTitle: photoTitle.value,
+        photoDescription: photoDescription.value,
       }
+
+      console.log('导航到确认页，传递订单信息:', orderInfo)
 
       // 导航到确认页面，传递订单信息
       router.push({
@@ -168,6 +232,10 @@ export default defineComponent({
     }
 
     return {
+      photoUrl,
+      photoId,
+      photoTitle,
+      photoDescription,
       orderForm,
       submitForm,
     }

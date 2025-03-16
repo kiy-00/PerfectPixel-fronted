@@ -90,11 +90,23 @@
           <!-- 照片预览 -->
           <div class="mb-8">
             <h3 class="font-semibold text-neutral-dark mb-3">照片预览</h3>
-            <div class="flex justify-center">
+            <div v-if="orderInfo.photoUrl" class="flex justify-center">
+              <div class="max-w-md w-full">
+                <img :src="orderInfo.photoUrl" class="w-full rounded-lg object-contain max-h-64" />
+                <div class="mt-2">
+                  <h4 class="font-medium text-neutral-dark">{{ orderInfo.photoTitle }}</h4>
+                  <p class="text-sm text-neutral-dark">{{ orderInfo.photoDescription }}</p>
+                  <div class="mt-2 text-xs text-neutral-dark">
+                    临时照片ID: {{ orderInfo.photoId }}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div v-else class="flex justify-center">
               <div
                 class="w-full max-w-md h-64 bg-neutral bg-opacity-20 rounded-lg flex items-center justify-center"
               >
-                <p class="text-neutral-dark">上传的照片预览（实际项目中展示真实照片）</p>
+                <p class="text-neutral-dark">无法预览照片，请返回上一步</p>
               </div>
             </div>
           </div>
@@ -151,6 +163,7 @@
 <script lang="ts">
 import { defineComponent, ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import apiClient from '../services/apiService'
 
 export default defineComponent({
   name: 'RetouchOrderConfirmView',
@@ -160,43 +173,91 @@ export default defineComponent({
 
     const isConfirmed = ref(false)
     const isSubmitting = ref(false)
+    const debugLogs = ref<string[]>([]) // 用于记录调试信息
+
+    // 添加调试日志
+    const addDebugLog = (message: string, data?: any) => {
+      const timestamp = new Date().toISOString()
+      const logEntry = `${timestamp}: ${message}` + (data ? ` - ${JSON.stringify(data)}` : '')
+      debugLogs.value.push(logEntry)
+      console.log(logEntry)
+    }
 
     // 处理从路由获取的订单信息
     const orderInfo = ref({
       retoucherId: 0,
       photoId: '',
       requirements: '',
+      photoUrl: '',
+      photoTitle: '',
+      photoDescription: '',
       price: 50,
     })
 
     // 从URL查询参数获取订单信息
     onMounted(() => {
       try {
+        addDebugLog('开始加载订单信息')
         const orderInfoStr = route.query.orderInfo as string
         if (orderInfoStr) {
           orderInfo.value = JSON.parse(orderInfoStr)
+          addDebugLog('成功解析订单信息', {
+            retoucherId: orderInfo.value.retoucherId,
+            photoId: orderInfo.value.photoId,
+            // 将长字段截断
+            requirements: orderInfo.value.requirements?.substring(0, 50) + '...',
+            photoTitle: orderInfo.value.photoTitle,
+          })
+        } else {
+          addDebugLog('URL中没有找到订单信息')
         }
       } catch (error) {
-        console.error('解析订单信息失败:', error)
+        addDebugLog('解析订单信息失败', error)
         // 如果解析失败，返回上一步
         router.go(-1)
       }
     })
 
-    // 提交订单
+    // 提交订单 - 简化版本，不再转换临时照片
     const submitOrder = async () => {
       if (!isConfirmed.value || isSubmitting.value) return
 
       isSubmitting.value = true
+      addDebugLog('开始提交订单')
 
       try {
-        // 模拟API调用
-        await new Promise((resolve) => setTimeout(resolve, 1500))
+        // 直接创建修图订单，使用之前上传的photoId
+        addDebugLog('正在创建修图订单', {
+          retoucherId: orderInfo.value.retoucherId,
+          photoId: orderInfo.value.photoId,
+        })
 
-        // 成功后跳转到成功页面
-        router.push('/order-success')
+        const orderResponse = await apiClient.post('/RetouchOrder', {
+          retoucherId: orderInfo.value.retoucherId,
+          photoId: orderInfo.value.photoId,
+          requirements: orderInfo.value.requirements,
+        })
+
+        addDebugLog('订单创建成功', {
+          orderId: orderResponse.data.orderId,
+        })
+
+        // 清理本地存储
+        localStorage.removeItem('retouch-order-form-data')
+        localStorage.removeItem('perfectpixel-photo')
+
+        addDebugLog('本地缓存已清理')
+
+        // 跳转到成功页面
+        router.push({
+          path: '/order-success',
+          query: {
+            orderId: orderResponse.data.orderId,
+          },
+        })
       } catch (error) {
         console.error('订单提交失败:', error)
+        addDebugLog('订单提交失败', error)
         alert('订单提交失败，请稍后重试')
       } finally {
         isSubmitting.value = false
@@ -208,6 +269,7 @@ export default defineComponent({
       isConfirmed,
       isSubmitting,
       submitOrder,
+      debugLogs,
     }
   },
 })

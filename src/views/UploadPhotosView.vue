@@ -112,10 +112,10 @@
 
           <!-- 照片预览区域 -->
           <div v-if="uploadedPhoto" class="mb-6">
-            <h3 class="text-lg font-medium text-neutral-dark mb-4">已上传照片预览</h3>
-            <div class="flex justify-center">
-              <div class="relative group rounded-lg overflow-hidden aspect-square max-w-sm w-full">
-                <img :src="uploadedPhoto.url" class="w-full h-full object-cover" />
+            <h3 class="text-lg font-medium text-neutral-dark mb-4">照片预览</h3>
+            <div class="mx-auto max-w-md">
+              <div class="relative group rounded-lg overflow-hidden">
+                <img :src="uploadedPhoto.url" class="w-full object-contain max-h-80" />
                 <div
                   class="absolute inset-0 bg-black bg-opacity-40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
                 >
@@ -136,8 +136,44 @@
                 <div
                   class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-60 text-white text-xs p-1 truncate"
                 >
-                  {{ uploadedPhoto.file.name }}
+                  {{ uploadedPhoto.file ? uploadedPhoto.file.name : '已上传照片' }}
                 </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 照片信息表单 -->
+          <div v-if="uploadedPhoto" class="mb-6">
+            <h3 class="text-lg font-medium text-neutral-dark mb-4">照片信息</h3>
+            <div class="space-y-4">
+              <!-- 照片标题 -->
+              <div>
+                <label for="photoTitle" class="block text-neutral-dark mb-2">
+                  照片标题 <span class="text-error">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="photoTitle"
+                  v-model="uploadedPhoto.title"
+                  class="w-full px-4 py-2 border border-neutral rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="请输入照片标题"
+                  required
+                />
+              </div>
+
+              <!-- 照片描述 -->
+              <div>
+                <label for="photoDescription" class="block text-neutral-dark mb-2">
+                  照片描述 <span class="text-error">*</span>
+                </label>
+                <textarea
+                  id="photoDescription"
+                  v-model="uploadedPhoto.description"
+                  rows="3"
+                  class="w-full px-4 py-2 border border-neutral rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="请描述这张照片的修图需求或其他信息"
+                  required
+                ></textarea>
               </div>
             </div>
           </div>
@@ -148,16 +184,16 @@
               {{ uploadedPhoto ? '已选择照片' : '请选择一张照片' }}
             </span>
             <button
-              @click="proceedToOrderCreation"
-              :disabled="!uploadedPhoto"
+              @click="uploadAndProceed"
+              :disabled="!canProceed"
               :class="[
                 'px-6 py-3 rounded-md font-medium transition-colors',
-                uploadedPhoto
+                canProceed
                   ? 'bg-primary text-white hover:bg-green-dark'
                   : 'bg-neutral text-neutral-dark cursor-not-allowed',
               ]"
             >
-              下一步
+              {{ isUploading ? '上传中...' : '下一步' }}
             </button>
           </div>
         </div>
@@ -180,13 +216,23 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, PropType } from 'vue'
-import { useRouter } from 'vue-router'
+import { defineComponent, ref, PropType, computed, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import apiClient from '../services/apiService'
 
 interface UploadedPhoto {
-  file: File
+  file: File | null
   url: string
+  title: string
+  description: string
+  uploadedPhotoId?: string
+  uploadedPhotoUrl?: string
+  uploadedThumbnailUrl?: string
+  isFromStorage?: boolean
 }
+
+// Storage key for persisting uploaded photo data
+const UPLOADED_PHOTO_STORAGE_KEY = 'perfectpixel-photo'
 
 export default defineComponent({
   name: 'UploadPhotosView',
@@ -198,16 +244,98 @@ export default defineComponent({
   },
   setup(props) {
     const router = useRouter()
+    const route = useRoute()
     const fileInput = ref<HTMLInputElement | null>(null)
     const uploadedPhoto = ref<UploadedPhoto | null>(null)
     const isDragging = ref(false)
+    const isUploading = ref(false)
+
+    // 计算是否可以进行下一步
+    const canProceed = computed(() => {
+      if (!uploadedPhoto.value) return false
+      return (
+        !!uploadedPhoto.value.title &&
+        !!uploadedPhoto.value.description &&
+        (!!uploadedPhoto.value.uploadedPhotoId || !isUploading.value)
+      )
+    })
+
+    // Save uploaded photo information to storage
+    const saveUploadedPhotoToStorage = (photo: UploadedPhoto) => {
+      const photoToStore = {
+        title: photo.title,
+        description: photo.description,
+        uploadedPhotoId: photo.uploadedPhotoId,
+        uploadedPhotoUrl: photo.uploadedPhotoUrl,
+        uploadedThumbnailUrl: photo.uploadedThumbnailUrl,
+        // Store the original file name for debugging
+        originalFileName: photo.file ? photo.file.name : null,
+        // Store time for debugging
+        uploadTime: new Date().toISOString(),
+        retoucherId: props.retoucherId,
+      }
+
+      localStorage.setItem(UPLOADED_PHOTO_STORAGE_KEY, JSON.stringify(photoToStore))
+      console.log('照片信息已保存到本地存储:', photoToStore)
+    }
+
+    // Load previously uploaded photo information from storage
+    const loadUploadedPhotoFromStorage = () => {
+      try {
+        const storedPhotoString = localStorage.getItem(UPLOADED_PHOTO_STORAGE_KEY)
+        if (!storedPhotoString) return null
+
+        const storedPhoto = JSON.parse(storedPhotoString)
+
+        // Only restore if it's for the same retoucher
+        if (storedPhoto.retoucherId !== props.retoucherId) return null
+
+        console.log('找到存储的照片信息:', storedPhoto)
+
+        // Get the STATIC ASSETS URL instead of API base URL
+        const staticAssetsUrl = import.meta.env.VITE_STATIC_ASSETS_URL || ''
+
+        // Use paths directly from the server without modification
+        let photoUrl = storedPhoto.uploadedPhotoUrl
+        let thumbnailUrl = storedPhoto.uploadedThumbnailUrl || ''
+
+        // Make sure URLs are absolute by prepending the static assets URL if needed
+        photoUrl = photoUrl.startsWith('http') ? photoUrl : `${staticAssetsUrl}${photoUrl}`
+        thumbnailUrl =
+          thumbnailUrl.startsWith('http') || !thumbnailUrl
+            ? thumbnailUrl
+            : `${staticAssetsUrl}${thumbnailUrl}`
+
+        // Create a photo object from stored data
+        return {
+          file: null, // We don't have the actual file object anymore
+          url: photoUrl, // Use the complete URL with static assets base
+          title: storedPhoto.title,
+          description: storedPhoto.description,
+          uploadedPhotoId: storedPhoto.uploadedPhotoId,
+          uploadedPhotoUrl: photoUrl,
+          uploadedThumbnailUrl: thumbnailUrl,
+          isFromStorage: true,
+        } as UploadedPhoto
+      } catch (error) {
+        console.error('从存储加载照片信息失败:', error)
+        return null
+      }
+    }
+
+    // Clear stored photo information
+    const clearStoredPhotoInfo = () => {
+      localStorage.removeItem(UPLOADED_PHOTO_STORAGE_KEY)
+      console.log('已清除存储的照片信息')
+    }
 
     // 处理文件选择
     const handleFileChange = (event: Event) => {
       const input = event.target as HTMLInputElement
       if (!input.files?.length) return
 
-      processFile(input.files[0])
+      const file = input.files[0]
+      processFile(file)
     }
 
     // 处理拖拽放置
@@ -216,20 +344,15 @@ export default defineComponent({
 
       if (!event.dataTransfer?.files.length) return
 
-      // 如果拖放了多个文件，只处理第一个
-      const file = Array.from(event.dataTransfer.files).find((file) =>
-        file.type.startsWith('image/'),
-      )
-      if (file) {
-        processFile(file)
-      }
+      const file = event.dataTransfer.files[0]
+      processFile(file)
     }
 
     // 处理文件
     const processFile = (file: File) => {
-      // 检查是否为图片文件
+      // 检查是否是图片文件
       if (!file.type.startsWith('image/')) {
-        alert('请选择图片文件')
+        alert('请上传图片文件')
         return
       }
 
@@ -239,54 +362,147 @@ export default defineComponent({
         return
       }
 
-      // 如果已有照片，释放之前的URL资源
-      if (uploadedPhoto.value) {
+      // 如果已经有上传的照片，先释放其URL资源
+      if (uploadedPhoto.value && !uploadedPhoto.value.isFromStorage) {
         URL.revokeObjectURL(uploadedPhoto.value.url)
       }
+
+      // Clear any stored photo data when selecting a new image
+      clearStoredPhotoInfo()
 
       // 创建预览URL
       const url = URL.createObjectURL(file)
-      uploadedPhoto.value = { file, url }
-    }
-
-    // 移除照片
-    const removePhoto = () => {
-      if (uploadedPhoto.value) {
-        // 释放URL资源
-        URL.revokeObjectURL(uploadedPhoto.value.url)
-        // 移除照片
-        uploadedPhoto.value = null
+      uploadedPhoto.value = {
+        file,
+        url,
+        title: '',
+        description: '',
       }
     }
 
-    // 继续到订单创建
-    const proceedToOrderCreation = () => {
-      if (!uploadedPhoto.value) {
-        alert('请选择一张照片')
+    // 移除照片 (简化版本 - 不再调用后端删除API)
+    const removePhoto = () => {
+      if (uploadedPhoto.value) {
+        // 释放URL资源，但仅当它不是从存储加载的
+        if (!uploadedPhoto.value.isFromStorage) {
+          URL.revokeObjectURL(uploadedPhoto.value.url)
+        }
+        uploadedPhoto.value = null
+
+        // Clear stored information when removing a photo
+        clearStoredPhotoInfo()
+      }
+    }
+
+    // 上传照片到服务器并继续到订单创建
+    const uploadAndProceed = async () => {
+      if (!uploadedPhoto.value || !uploadedPhoto.value.title || !uploadedPhoto.value.description) {
+        alert('请填写完整的照片信息')
         return
       }
 
-      // 模拟上传完成后获取的照片ID
-      const photoId = `photo-${Date.now()}`
+      // If the photo was already uploaded (loaded from storage), just proceed
+      if (uploadedPhoto.value.isFromStorage && uploadedPhoto.value.uploadedPhotoId) {
+        console.log('使用已存储的照片信息，跳过上传', uploadedPhoto.value)
+        router.push({
+          path: '/create-retouch-order',
+          query: {
+            retoucherId: props.retoucherId.toString(),
+            photoId: uploadedPhoto.value.uploadedPhotoId,
+            photoUrl: uploadedPhoto.value.uploadedPhotoUrl,
+            photoTitle: encodeURIComponent(uploadedPhoto.value.title),
+            photoDescription: encodeURIComponent(uploadedPhoto.value.description),
+          },
+        })
+        return
+      }
 
-      // 导航到下一步（订单创建）
-      router.push({
-        path: '/create-retouch-order',
-        query: {
-          retoucherId: props.retoucherId.toString(),
-          photoId: photoId,
-        },
-      })
+      try {
+        isUploading.value = true
+
+        // 准备FormData对象 - 直接发送到general endpoint
+        const formData = new FormData()
+        formData.append('file', uploadedPhoto.value.file!)
+        formData.append('title', uploadedPhoto.value.title)
+        formData.append('description', uploadedPhoto.value.description)
+
+        console.log('正在上传照片:', {
+          fileName: uploadedPhoto.value.file!.name,
+          fileSize: uploadedPhoto.value.file!.size,
+          title: uploadedPhoto.value.title,
+          description: uploadedPhoto.value.description,
+        })
+
+        // 直接调用general照片上传API
+        const response = await apiClient.post('/Photo/upload/general', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        })
+
+        console.log('照片上传成功:', response.data)
+
+        // 获取静态资源URL前缀
+        const staticAssetsUrl = import.meta.env.VITE_STATIC_ASSETS_URL || ''
+
+        // 保存上传成功后返回的信息
+        if (uploadedPhoto.value) {
+          uploadedPhoto.value.uploadedPhotoId = response.data.photoId
+
+          // Use paths directly from the server without modification
+          const photoUrl = response.data.photoUrl
+          const thumbnailUrl = response.data.thumbnailUrl
+
+          // 添加完整的URL路径
+          uploadedPhoto.value.uploadedPhotoUrl = photoUrl.startsWith('http')
+            ? photoUrl
+            : `${staticAssetsUrl}${photoUrl}`
+          uploadedPhoto.value.uploadedThumbnailUrl = thumbnailUrl.startsWith('http')
+            ? thumbnailUrl
+            : `${staticAssetsUrl}${thumbnailUrl}`
+
+          // Save to storage
+          saveUploadedPhotoToStorage(uploadedPhoto.value)
+        }
+
+        // 导航到下一步（订单创建）
+        router.push({
+          path: '/create-retouch-order',
+          query: {
+            retoucherId: props.retoucherId.toString(),
+            photoId: response.data.photoId,
+            photoUrl: uploadedPhoto.value.uploadedPhotoUrl,
+            photoTitle: encodeURIComponent(uploadedPhoto.value.title),
+            photoDescription: encodeURIComponent(uploadedPhoto.value.description),
+          },
+        })
+      } catch (error) {
+        console.error('照片上传失败:', error)
+        alert('照片上传失败，请稍后重试')
+      } finally {
+        isUploading.value = false
+      }
     }
+
+    // On component mount, check for previously uploaded photos
+    onMounted(() => {
+      const storedPhoto = loadUploadedPhotoFromStorage()
+      if (storedPhoto) {
+        console.log('正在恢复之前上传的照片:', storedPhoto)
+        uploadedPhoto.value = storedPhoto
+      }
+    })
 
     return {
       fileInput,
       uploadedPhoto,
       isDragging,
+      isUploading,
+      canProceed,
       handleFileChange,
       handleDrop,
       removePhoto,
-      proceedToOrderCreation,
+      uploadAndProceed,
     }
   },
 })
