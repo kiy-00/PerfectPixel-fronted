@@ -362,6 +362,7 @@ import { defineComponent, ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '../stores/userStore'
 import apiClient from '../services/apiService'
+import axios from 'axios'
 
 export default defineComponent({
   name: 'RetouchOrderProcessView',
@@ -399,7 +400,8 @@ export default defineComponent({
     })
 
     const canStartProcessing = computed(() => {
-      return orderDetails.value && orderDetails.value.status === 'Accepted'
+      // 修改：不再使用'Accepted'状态，因为数据库中没有这个值
+      return false // 这个计算属性现在没有用了
     })
 
     const canComplete = computed(() => {
@@ -431,15 +433,15 @@ export default defineComponent({
       switch (status) {
         case 'Pending':
           return '待处理'
-        case 'Accepted':
+        case 'Accepted': // 保留UI表示的'已接受'，实际不存在此数据库状态
           return '已接受'
-        case 'Rejected':
+        case 'Rejected': // 保留UI表示的'已拒绝'，实际不存在此数据库状态
           return '已拒绝'
         case 'InProgress':
           return '处理中'
         case 'Completed':
           return '已完成'
-        case 'Cancelled':
+        case 'Cancelled': // 添加对应的中文展示
           return '已取消'
         default:
           return status
@@ -537,14 +539,46 @@ export default defineComponent({
     const updateStatus = async (newStatus: string) => {
       if (!orderDetails.value) return
 
-      // 仅UI展示，后续会实现API调用
-      console.log(`更新订单 ${orderId.value} 状态为: ${newStatus}`)
+      // 将UI表示的状态映射到实际的数据库枚举值
+      let actualStatus: string
+      let confirmMessage: string
 
-      // 模拟更新成功
-      alert(`订单状态已更新为: ${getStatusText(newStatus)}`)
+      // 根据按钮类型映射到正确的数据库状态
+      if (newStatus === 'Accepted') {
+        actualStatus = 'InProgress' // 接受订单实际上设置为InProgress状态
+        confirmMessage = '确认接受此订单?'
+      } else if (newStatus === 'Rejected') {
+        actualStatus = 'Cancelled' // 拒绝订单实际上设置为Cancelled状态
+        confirmMessage = '确认拒绝此订单?'
+      } else {
+        actualStatus = newStatus // 其他状态不需要映射
+        confirmMessage = `确认将订单状态更改为${getStatusText(newStatus)}?`
+      }
 
-      // 更新本地状态（实际项目中应该重新获取订单数据）
-      orderDetails.value.status = newStatus
+      if (!confirm(confirmMessage)) {
+        return // 用户取消操作
+      }
+
+      try {
+        loading.value = true
+        console.log(
+          `正在更新订单 ${orderId.value} 状态为: ${actualStatus}（UI显示为: ${newStatus}）`,
+        )
+
+        // 调用API更新订单状态，使用映射后的实际状态值
+        await apiClient.put(`/RetouchOrder/${orderId.value}/status`, { status: actualStatus })
+
+        console.log('订单状态更新成功')
+        alert(`订单状态已成功更新为: ${getStatusText(newStatus)}`)
+
+        // 重新获取订单数据以获取最新状态
+        await fetchOrderDetails()
+      } catch (err) {
+        console.error('更新订单状态失败:', err)
+        alert('更新订单状态失败，请稍后重试')
+      } finally {
+        loading.value = false
+      }
     }
 
     // 文件上传相关方法
@@ -608,23 +642,77 @@ export default defineComponent({
         return
       }
 
-      // 仅UI展示，后续会实现API调用
-      console.log(`完成订单 ${orderId.value}，上传的文件:`, selectedFile.value.name)
+      try {
+        loading.value = true
+        const formData = new FormData()
 
-      // 模拟上传成功
-      alert('修图成果已上传，订单已完成')
+        // 关键修改：直接添加文件对象
+        formData.append('RetouchedPhoto', selectedFile.value)
 
-      // 更新本地状态
-      orderDetails.value.status = 'Completed'
-      orderDetails.value.completedAt = new Date().toISOString()
+        // 添加评论
+        formData.append(
+          'Comment',
+          `修图已完成，调整了照片的光影效果、色彩平衡和细节处理，上传于${new Date().toLocaleString('zh-CN')}`,
+        )
 
-      // 关闭完成表单
-      showCompletionForm.value = false
+        // 使用 multipart/form-data 提交
+        await apiClient.put(`/RetouchOrder/${orderId.value}/complete`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        })
+
+        // 后续处理代码保持不变
+        alert('修图成果已上传，订单已完成')
+        orderDetails.value.status = 'Completed'
+        showCompletionForm.value = false
+        await fetchOrderDetails()
+      } catch (err) {
+        console.error('完成订单失败:', err)
+        alert('完成订单失败，请稍后重试')
+      } finally {
+        loading.value = false
+      }
     }
 
     // 下载原始图片
     const downloadOriginalImage = () => {
-      if (photoUrl.value) {
+      if (!photoUrl.value) {
+        alert('照片链接不可用，无法下载')
+        return
+      }
+
+      try {
+        // 创建一个隐藏的a标签来触发下载
+        const link = document.createElement('a')
+        link.href = photoUrl.value
+
+        // 从URL中提取文件名，如果无法提取，使用订单号和照片标题创建文件名
+        let filename = ''
+        try {
+          // 尝试从URL中提取文件名
+          const urlParts = new URL(photoUrl.value).pathname.split('/')
+          filename = urlParts[urlParts.length - 1]
+        } catch (e) {
+          // 如果URL解析失败，使用订单信息创建文件名
+          const fileExtension = photoUrl.value.toLowerCase().endsWith('.png') ? '.png' : '.jpg'
+          filename = `订单${orderDetails.value.orderId}-${orderDetails.value.photoTitle}${fileExtension}`
+        }
+
+        // 设置下载的文件名
+        link.download = filename
+
+        // 添加到文档中并触发点击
+        document.body.appendChild(link)
+        link.click()
+
+        // 清理DOM
+        document.body.removeChild(link)
+
+        console.log('开始下载图片:', filename)
+      } catch (err) {
+        console.error('下载图片失败:', err)
+        alert('下载图片失败，请尝试右键点击图片并选择"图片另存为"')
+
+        // 回退到简单的窗口打开方式
         window.open(photoUrl.value, '_blank')
       }
     }
