@@ -272,18 +272,18 @@
                       </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-neutral">
-                      <tr v-for="order in retouchOrdersReceived" :key="order.id">
+                      <tr v-for="order in retouchOrdersReceived" :key="order.orderId">
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-primary">
-                          {{ order.orderNumber }}
+                          {{ order.orderId }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-dark">
-                          {{ order.customerName }}
+                          {{ order.username }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-dark">
                           {{ formatDate(order.createdAt) }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-dark">
-                          ¥{{ order.amount }}
+                          ¥{{ order.price }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                           <span
@@ -297,7 +297,7 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-dark">
                           <button
-                            @click="processOrder(order.id)"
+                            @click="processOrder(order.orderId)"
                             class="text-primary hover:text-green-dark"
                           >
                             处理订单
@@ -550,9 +550,26 @@ export default defineComponent({
           retouchOrdersPlaced.value,
         )
 
+        // 如果用户是修图师，获取收到的修图订单
+        if (isRetoucher.value) {
+          console.log('当前用户是修图师，正在获取收到的修图订单...')
+          try {
+            const retoucherOrderResponse = await apiClient.get('/RetouchOrder/retoucher')
+            retouchOrdersReceived.value = retoucherOrderResponse.data
+            console.log(
+              `获取到${retouchOrdersReceived.value.length}条收到的修图订单:`,
+              retouchOrdersReceived.value,
+            )
+            allTabs.value[2].count = retouchOrdersReceived.value.length
+          } catch (err) {
+            console.error('获取修图师收到的订单失败:', err)
+            retouchOrdersReceived.value = []
+            allTabs.value[2].count = 0
+          }
+        }
+
         // 暂时清空其他类型的订单列表 - 后续可以根据实际API添加
         photographyOrdersPlaced.value = []
-        retouchOrdersReceived.value = []
         photographyOrdersReceived.value = []
 
         // 更新标签页计数
@@ -560,7 +577,7 @@ export default defineComponent({
         allTabs.value[1].count = 0 // 暂无摄影预约数据
 
         if (isRetoucher.value) {
-          allTabs.value[2].count = 0 // 暂无收到的修图订单数据
+          allTabs.value[2].count = retouchOrdersReceived.value.length
         }
 
         if (isPhotographer.value) {
@@ -576,7 +593,7 @@ export default defineComponent({
 
     // 查看订单详情
     const viewOrderDetails = (orderId: string) => {
-      router.push(`/order-details/${orderId}`)
+      router.push(`/retouch-order/${orderId}`)
     }
 
     // 处理订单（修图师/摄影师视角）

@@ -137,6 +137,13 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/retouch-order/:id',
+      name: 'retouch-order-detail',
+      component: () => import('../views/RetouchOrderDetailView.vue'),
+      props: true,
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/order-success',
       name: 'order-success',
       component: () => import('../views/OrderSuccessView.vue'),
