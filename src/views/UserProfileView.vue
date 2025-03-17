@@ -137,8 +137,31 @@
             </div>
 
             <!-- 专业信息卡片 -->
+            <!-- 专业信息卡片 -->
             <div class="bg-white rounded-lg shadow-md p-6 mt-6" v-if="photographerDetails">
-              <h2 class="text-xl font-semibold text-neutral-dark mb-4">摄影师详情</h2>
+              <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold text-neutral-dark">摄影师详情</h2>
+                <button
+                  @click="openPhotographerModal"
+                  class="text-primary hover:text-green-dark transition-colors text-sm flex items-center"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-4 w-4 mr-1"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                    />
+                  </svg>
+                  更新资料
+                </button>
+              </div>
               <div class="space-y-4">
                 <div>
                   <h3 class="text-sm text-neutral-dark font-medium">专业认证</h3>
@@ -182,7 +205,29 @@
             </div>
 
             <div class="bg-white rounded-lg shadow-md p-6 mt-6" v-if="retoucherDetails">
-              <h2 class="text-xl font-semibold text-neutral-dark mb-4">修图师详情</h2>
+              <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold text-neutral-dark">修图师详情</h2>
+                <button
+                  @click="openRetoucherModal"
+                  class="text-primary hover:text-green-dark transition-colors text-sm flex items-center"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-4 w-4 mr-1"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                    />
+                  </svg>
+                  更新资料
+                </button>
+              </div>
               <div class="space-y-4">
                 <div>
                   <h3 class="text-sm text-neutral-dark font-medium">专业认证</h3>
@@ -396,6 +441,13 @@
         </div>
       </div>
     </template>
+    <ProfessionalProfileModal
+      :is-open="isProfileModalOpen"
+      :profile-type="activeProfileType"
+      :profile-data="activeProfileType === 'photographer' ? photographerDetails : retoucherDetails"
+      @close="closeProfileModal"
+      @save="saveProfileChanges"
+    />
   </div>
 </template>
 
@@ -404,9 +456,13 @@ import { defineComponent, ref, computed, onMounted } from 'vue'
 import { useUserStore } from '../stores/userStore'
 import { retoucherPortfolioAPI } from '../services/apiService.ts' // 确保路径正确
 import apiClient from '../services/apiService.ts' // 确保路径正确
+import ProfessionalProfileModal from '../components/ProfessionalProfileModal.vue' // 确保路径正确
 
 export default defineComponent({
   name: 'UserProfileView',
+  components: {
+    ProfessionalProfileModal, // 在这里注册组件
+  },
   setup() {
     // 使用用户信息存储
     const userStore = useUserStore()
@@ -426,72 +482,10 @@ export default defineComponent({
     const isRetoucher = computed(() => userStore.isRetoucher)
 
     // 模拟作品集数据 - 实际项目中通常会有专门的API获取
-    const portfolio = ref([
-      {
-        url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330',
-        title: '日系人像',
-        category: '人像摄影',
-      },
-      {
-        url: 'https://images.unsplash.com/photo-1554151228-14d9def656e4',
-        title: '城市街拍',
-        category: '街拍',
-      },
-      {
-        url: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04',
-        title: '自然光人像',
-        category: '人像摄影',
-      },
-      {
-        url: 'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e',
-        title: '夏日写真',
-        category: '人像摄影',
-      },
-      {
-        url: 'https://images.unsplash.com/photo-1504257432389-52343af06ae3',
-        title: '暮色城市',
-        category: '风景摄影',
-      },
-      {
-        url: 'https://images.unsplash.com/photo-1511765224389-37f0e77cf0eb',
-        title: '美食记录',
-        category: '美食摄影',
-      },
-    ])
+    const portfolio = ref([])
 
     // 摄影作品集数据
-    const photographyPortfolio = ref([
-      {
-        url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330',
-        title: '日系人像',
-        category: '人像摄影',
-      },
-      {
-        url: 'https://images.unsplash.com/photo-1554151228-14d9def656e4',
-        title: '城市街拍',
-        category: '街拍',
-      },
-      {
-        url: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04',
-        title: '自然光人像',
-        category: '人像摄影',
-      },
-      {
-        url: 'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e',
-        title: '夏日写真',
-        category: '人像摄影',
-      },
-      {
-        url: 'https://images.unsplash.com/photo-1504257432389-52343af06ae3',
-        title: '暮色城市',
-        category: '风景摄影',
-      },
-      {
-        url: 'https://images.unsplash.com/photo-1511765224389-37f0e77cf0eb',
-        title: '美食记录',
-        category: '美食摄影',
-      },
-    ])
+    const photographyPortfolio = ref([])
 
     const retoucherPublicPortfolios = ref([])
 
@@ -609,6 +603,49 @@ export default defineComponent({
       }
     }
 
+    // 在 setup 函数中添加以下内容
+    const isProfileModalOpen = ref(false)
+    const activeProfileType = ref('')
+
+    // 打开摄影师资料编辑模态框
+    const openPhotographerModal = () => {
+      activeProfileType.value = 'photographer'
+      isProfileModalOpen.value = true
+    }
+
+    // 打开修图师资料编辑模态框
+    const openRetoucherModal = () => {
+      activeProfileType.value = 'retoucher'
+      isProfileModalOpen.value = true
+    }
+
+    // 关闭模态框
+    const closeProfileModal = () => {
+      isProfileModalOpen.value = false
+    }
+
+    // 保存专业资料更改
+    const saveProfileChanges = async (updatedData) => {
+      try {
+        if (activeProfileType.value === 'photographer' && userStore.photographerId) {
+          console.log('更新摄影师资料:', updatedData)
+          // 准备将来与后端交互的代码
+          // await apiClient.put(`/Photographer/${userStore.photographerId}`, updatedData)
+          // 更新本地数据
+          photographerDetails.value = { ...photographerDetails.value, ...updatedData }
+        } else if (activeProfileType.value === 'retoucher' && userStore.retoucherId) {
+          console.log('更新修图师资料:', updatedData)
+          // 准备将来与后端交互的代码
+          // await apiClient.put(`/Retoucher/${userStore.retoucherId}`, updatedData)
+          // 更新本地数据
+          retoucherDetails.value = { ...retoucherDetails.value, ...updatedData }
+        }
+      } catch (error) {
+        console.error('更新专业资料失败:', error)
+        // TODO: 显示错误消息
+      }
+    }
+
     // 在组件挂载时获取用户资料
     onMounted(async () => {
       loading.value = true
@@ -654,6 +691,12 @@ export default defineComponent({
       photographerDetails,
       retoucherDetails,
       loadingProfessionalDetails,
+      isProfileModalOpen,
+      activeProfileType,
+      openPhotographerModal,
+      openRetoucherModal,
+      closeProfileModal,
+      saveProfileChanges,
     }
   },
 })
