@@ -598,7 +598,12 @@ export default defineComponent({
 
     // 处理订单（修图师/摄影师视角）
     const processOrder = (orderId: string) => {
-      router.push(`/order-process/${orderId}`)
+      // 针对修图订单和摄影预约使用不同的路由
+      if (activeTab.value === 'retouch-orders-received') {
+        router.push(`/retouch-order-process/${orderId}`)
+      } else {
+        router.push(`/order-process/${orderId}`) // 原有的通用路径，后续可以改为摄影专用
+      }
     }
 
     // 组件挂载时获取订单数据
