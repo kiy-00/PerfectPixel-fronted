@@ -294,9 +294,13 @@ export default defineComponent({
 
     // 选择修图师导航到用户详情页
     const selectRetoucher = (retoucher: RetoucherCardData) => {
-      // 导航到用户详情页面，使用userId
+      // 导航到上传照片页面，开始创建订单流程
       router.push({
-        path: `/user/${retoucher.userId}`,
+        path: `/upload-photos`,
+        query: {
+          retoucherId: retoucher.id.toString(),
+          returnTo: '/retouch-service', // 添加这个参数指定创建完成后的返回位置
+        },
       })
     }
 

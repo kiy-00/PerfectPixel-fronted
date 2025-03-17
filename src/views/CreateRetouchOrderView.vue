@@ -209,6 +209,9 @@ export default defineComponent({
       )
       console.log('保存订单表单数据到本地存储')
 
+      // 从URL参数中获取returnTo，如果存在则传递下去
+      const returnTo = route.query.returnTo as string
+
       // 构建订单信息对象
       const orderInfo = {
         retoucherId,
@@ -223,11 +226,18 @@ export default defineComponent({
       console.log('导航到确认页，传递订单信息:', orderInfo)
 
       // 导航到确认页面，传递订单信息
+      const query: any = {
+        orderInfo: JSON.stringify(orderInfo),
+      }
+
+      // 如果有returnTo参数，传递下去
+      if (returnTo) {
+        query.returnTo = returnTo
+      }
+
       router.push({
         path: '/retouch-order-confirm',
-        query: {
-          orderInfo: JSON.stringify(orderInfo),
-        },
+        query,
       })
     }
 

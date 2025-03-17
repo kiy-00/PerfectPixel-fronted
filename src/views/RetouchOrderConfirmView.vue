@@ -248,13 +248,17 @@ export default defineComponent({
 
         addDebugLog('本地缓存已清理')
 
-        // 跳转到成功页面
-        router.push({
-          path: '/order-success',
-          query: {
-            orderId: orderResponse.data.orderId,
-          },
-        })
+        // 获取返回页面地址，如果存在则跳转回去，否则跳转到成功页面
+        const returnTo = route.query.returnTo as string
+
+        if (returnTo) {
+          addDebugLog('订单创建成功，返回到原始页面', { returnTo })
+          router.push(returnTo)
+        } else {
+          // 如果没有returnTo参数，则返回到修图服务页面
+          addDebugLog('订单创建成功，没有returnTo参数，默认返回到修图服务页面')
+          router.push('/retouch-service')
+        }
       } catch (error) {
         console.error('订单提交失败:', error)
         addDebugLog('订单提交失败', error)

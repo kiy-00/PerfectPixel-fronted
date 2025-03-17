@@ -136,6 +136,17 @@ const router = createRouter({
       props: true,
       meta: { requiresAuth: true },
     },
+    {
+      path: '/order-success',
+      name: 'order-success',
+      component: () => import('../views/OrderSuccessView.vue'),
+    },
+    {
+      path: '/my-orders',
+      name: 'my-orders',
+      component: () => import('../views/MyOrdersView.vue'),
+      meta: { requiresAuth: true },
+    },
   ],
 })
 
