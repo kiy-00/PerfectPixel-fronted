@@ -54,12 +54,6 @@
                 >
                   联系我
                 </button>
-                <button
-                  @click="handleLogout"
-                  class="bg-primary text-white px-4 py-2 rounded-md font-medium hover:bg-red-600 transition-colors"
-                >
-                  退出登录
-                </button>
               </div>
             </div>
           </div>
@@ -137,6 +131,87 @@
                   <h3 class="text-sm text-neutral-dark font-medium">个人简介</h3>
                   <p class="mt-1 text-primary">
                     {{ userStore.userInfo?.biography || '用户暂未填写个人简介' }}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- 专业信息卡片 -->
+            <div class="bg-white rounded-lg shadow-md p-6 mt-6" v-if="photographerDetails">
+              <h2 class="text-xl font-semibold text-neutral-dark mb-4">摄影师详情</h2>
+              <div class="space-y-4">
+                <div>
+                  <h3 class="text-sm text-neutral-dark font-medium">专业认证</h3>
+                  <p class="mt-1 text-primary flex items-center">
+                    <span v-if="photographerDetails.isVerified" class="text-green-600 mr-2"
+                      >已认证</span
+                    >
+                    <span v-else class="text-yellow-600 mr-2">未认证</span>
+                    <span v-if="photographerDetails.verifiedAt" class="text-xs text-neutral-dark">
+                      (认证于 {{ formatDate(photographerDetails.verifiedAt) }})
+                    </span>
+                  </p>
+                </div>
+                <div>
+                  <h3 class="text-sm text-neutral-dark font-medium">摄影经验</h3>
+                  <p class="mt-1 text-primary">
+                    {{ photographerDetails.experience || '暂无信息' }}
+                  </p>
+                </div>
+                <div>
+                  <h3 class="text-sm text-neutral-dark font-medium">摄影设备</h3>
+                  <p class="mt-1 text-primary">
+                    {{ photographerDetails.equipmentInfo || '暂无信息' }}
+                  </p>
+                </div>
+                <div>
+                  <h3 class="text-sm text-neutral-dark font-medium">常驻地</h3>
+                  <p class="mt-1 text-primary">{{ photographerDetails.location || '暂无信息' }}</p>
+                </div>
+                <div>
+                  <h3 class="text-sm text-neutral-dark font-medium">价格区间</h3>
+                  <p class="mt-1 text-primary">
+                    {{
+                      photographerDetails.priceRangeMin && photographerDetails.priceRangeMax
+                        ? `¥${photographerDetails.priceRangeMin} ~ ¥${photographerDetails.priceRangeMax}`
+                        : '暂无信息'
+                    }}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-md p-6 mt-6" v-if="retoucherDetails">
+              <h2 class="text-xl font-semibold text-neutral-dark mb-4">修图师详情</h2>
+              <div class="space-y-4">
+                <div>
+                  <h3 class="text-sm text-neutral-dark font-medium">专业认证</h3>
+                  <p class="mt-1 text-primary flex items-center">
+                    <span v-if="retoucherDetails.isVerified" class="text-green-600 mr-2"
+                      >已认证</span
+                    >
+                    <span v-else class="text-yellow-600 mr-2">未认证</span>
+                    <span v-if="retoucherDetails.verifiedAt" class="text-xs text-neutral-dark">
+                      (认证于 {{ formatDate(retoucherDetails.verifiedAt) }})
+                    </span>
+                  </p>
+                </div>
+                <div>
+                  <h3 class="text-sm text-neutral-dark font-medium">专业领域</h3>
+                  <p class="mt-1 text-primary">{{ retoucherDetails.expertise || '暂无信息' }}</p>
+                </div>
+                <div>
+                  <h3 class="text-sm text-neutral-dark font-medium">使用软件</h3>
+                  <p class="mt-1 text-primary">{{ retoucherDetails.software || '暂无信息' }}</p>
+                </div>
+                <div>
+                  <h3 class="text-sm text-neutral-dark font-medium">单张价格</h3>
+                  <p class="mt-1 text-primary">
+                    {{
+                      retoucherDetails.pricePerPhoto
+                        ? `¥${retoucherDetails.pricePerPhoto}`
+                        : '暂无信息'
+                    }}
                   </p>
                 </div>
               </div>
@@ -309,12 +384,11 @@
                   <p class="text-sm text-neutral-dark mb-6">
                     成为认证修图师可以展示您的修图技术，接受修图订单
                   </p>
-                  <router-link
-                    to="/retoucher-certification"
+                  <button
                     class="px-6 py-3 bg-primary text-white rounded-md hover:bg-green-dark transition-colors"
                   >
                     去认证修图师
-                  </router-link>
+                  </button>
                 </div>
               </div>
             </div>
@@ -329,12 +403,11 @@
 import { defineComponent, ref, computed, onMounted } from 'vue'
 import { useUserStore } from '../stores/userStore'
 import { retoucherPortfolioAPI } from '../services/apiService.ts' // 确保路径正确
-import { useRouter } from 'vue-router'
+import apiClient from '../services/apiService.ts' // 确保路径正确
 
 export default defineComponent({
   name: 'UserProfileView',
   setup() {
-    const router = useRouter()
     // 使用用户信息存储
     const userStore = useUserStore()
 
@@ -459,6 +532,45 @@ export default defineComponent({
       }
     }
 
+    // 添加响应式状态变量来保存摄影师和修图师的详细信息
+    const photographerDetails = ref(null)
+    const retoucherDetails = ref(null)
+    const loadingProfessionalDetails = ref(false)
+
+    // 获取摄影师详细信息
+    const fetchPhotographerDetails = async () => {
+      if (!userStore.photographerId) return
+
+      try {
+        loadingProfessionalDetails.value = true
+        console.log('获取摄影师详情, photographerId:', userStore.photographerId)
+        const response = await apiClient.get(`/Photographer/${userStore.photographerId}`)
+        photographerDetails.value = response.data
+        console.log('获取到摄影师详情:', photographerDetails.value)
+      } catch (err) {
+        console.error('获取摄影师详情失败:', err)
+      } finally {
+        loadingProfessionalDetails.value = false
+      }
+    }
+
+    // 获取修图师详细信息
+    const fetchRetoucherDetails = async () => {
+      if (!userStore.retoucherId) return
+
+      try {
+        loadingProfessionalDetails.value = true
+        console.log('获取修图师详情, retoucherId:', userStore.retoucherId)
+        const response = await apiClient.get(`/Retoucher/${userStore.retoucherId}`)
+        retoucherDetails.value = response.data
+        console.log('获取到修图师详情:', retoucherDetails.value)
+      } catch (err) {
+        console.error('获取修图师详情失败:', err)
+      } finally {
+        loadingProfessionalDetails.value = false
+      }
+    }
+
     // 格式化日期
     const formatDate = (dateString?: string) => {
       if (!dateString) return '暂无数据'
@@ -497,11 +609,6 @@ export default defineComponent({
       }
     }
 
-    const handleLogout = () => {
-      userStore.logout()
-      router.push('/')
-    }
-
     // 在组件挂载时获取用户资料
     onMounted(async () => {
       loading.value = true
@@ -519,6 +626,16 @@ export default defineComponent({
       if (isRetoucher.value) {
         await fetchPublicRetoucherPortfolios()
       }
+
+      // 如果用户是摄影师，获取摄影师详情
+      if (isPhotographer.value && userStore.photographerId) {
+        await fetchPhotographerDetails()
+      }
+
+      // 如果用户是修图师，获取修图师详情
+      if (isRetoucher.value && userStore.retoucherId) {
+        await fetchRetoucherDetails()
+      }
     })
 
     return {
@@ -534,7 +651,9 @@ export default defineComponent({
       photographyPortfolio,
       retoucherPublicPortfolios,
       fetchPublicRetoucherPortfolios,
-      handleLogout,
+      photographerDetails,
+      retoucherDetails,
+      loadingProfessionalDetails,
     }
   },
 })

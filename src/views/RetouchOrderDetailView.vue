@@ -118,7 +118,7 @@
               <div class="absolute left-0 top-0 bottom-0 w-0.5 bg-neutral-light"></div>
 
               <!-- 创建订单 -->
-              <div class="relative mb-6">
+              <div class="relative mb-6 pl-8">
                 <div class="absolute left-0 -translate-x-1/2 w-4 h-4 rounded-full bg-primary"></div>
                 <div class="mb-1 font-medium text-neutral-dark">订单创建</div>
                 <div class="text-sm text-neutral-dark">
@@ -127,7 +127,7 @@
               </div>
 
               <!-- 修图师接单 -->
-              <div class="relative mb-6">
+              <div class="relative mb-6 pl-8">
                 <div
                   class="absolute left-0 -translate-x-1/2 w-4 h-4 rounded-full"
                   :class="orderDetails.status !== 'Pending' ? 'bg-primary' : 'bg-neutral'"
@@ -144,7 +144,7 @@
               </div>
 
               <!-- 修图中 -->
-              <div class="relative mb-6">
+              <div class="relative mb-6 pl-8">
                 <div
                   class="absolute left-0 -translate-x-1/2 w-4 h-4 rounded-full"
                   :class="
@@ -175,7 +175,7 @@
               </div>
 
               <!-- 订单完成 -->
-              <div class="relative">
+              <div class="relative pl-8">
                 <div
                   class="absolute left-0 -translate-x-1/2 w-4 h-4 rounded-full"
                   :class="orderDetails.status === 'Completed' ? 'bg-primary' : 'bg-neutral'"
@@ -259,6 +259,7 @@ export default defineComponent({
     const photoLoaded = ref(false)
     const photoUrl = ref('')
     const resultPhotoUrl = ref('')
+    const retouchedPhotoLoaded = ref(false) // Add a ref to track retouched photo loading
 
     // 获取订单状态对应的CSS类
     const getStatusClass = (status: string): string => {
@@ -319,6 +320,10 @@ export default defineComponent({
 
         // 获取照片URL
         await fetchPhotoUrl()
+
+        if (orderDetails.value.status === 'Completed' && orderDetails.value.retouchedPhotoId) {
+          await fetchRetouchedPhotoUrl()
+        }
       } catch (err: any) {
         console.error('获取订单详情失败:', err)
         error.value = '获取订单详情失败，请稍后再试'
@@ -343,18 +348,29 @@ export default defineComponent({
         const imageUrl = response.data.imageUrl
         photoUrl.value = imageUrl.startsWith('http') ? imageUrl : `${staticAssetsUrl}${imageUrl}`
 
-        // 如果订单已完成，设置结果照片URL
-        if (orderDetails.value.status === 'Completed' && response.data.resultUrl) {
-          const resultUrl = response.data.resultUrl
-          resultPhotoUrl.value = resultUrl.startsWith('http')
-            ? resultUrl
-            : `${staticAssetsUrl}${resultUrl}`
-        }
-
         photoLoaded.value = true
       } catch (err) {
         console.error('获取照片信息失败:', err)
         error.value = '获取照片信息失败，请稍后再试'
+      }
+    }
+
+    // Fetch the retouched photo similarly to the original photo
+    const fetchRetouchedPhotoUrl = async () => {
+      try {
+        console.log(`正在获取修图后照片信息，ID: ${orderDetails.value.retouchedPhotoId}`)
+        const response = await apiClient.get(`/Photo/${orderDetails.value.retouchedPhotoId}`)
+        console.log('修图后照片信息:', response.data)
+
+        const staticAssetsUrl = import.meta.env.VITE_STATIC_ASSETS_URL || ''
+        const imageUrl = response.data.imageUrl
+        resultPhotoUrl.value = imageUrl.startsWith('http')
+          ? imageUrl
+          : `${staticAssetsUrl}${imageUrl}`
+
+        retouchedPhotoLoaded.value = true
+      } catch (err) {
+        console.error('获取修图后照片失败:', err)
       }
     }
 

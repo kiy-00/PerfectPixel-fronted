@@ -1,429 +1,447 @@
 <template>
-  <div class="bg-neutral min-h-screen pb-10">
-    <!-- 页面标题区域 -->
-    <div class="bg-primary text-white px-6 py-4 shadow-md">
-      <div class="container mx-auto">
-        <div class="flex justify-between items-center">
-          <div>
-            <h1 class="text-2xl font-bold">我的订单</h1>
-            <p class="text-sm text-green-light mt-1">查看您的修图订单和摄影预约，追踪订单状态</p>
+  <div class="flex h-screen bg-neutral">
+    <!-- 侧边栏 -->
+    <SideBar class="hidden md:block" />
+
+    <!-- 主要内容 -->
+    <div class="flex-1 flex flex-col overflow-hidden">
+      <!-- 页面标题区域 -->
+      <div class="bg-primary text-white px-6 py-4 shadow-md">
+        <div class="container mx-auto">
+          <div class="flex justify-between items-center">
+            <div>
+              <h1 class="text-2xl font-bold">我的订单</h1>
+              <p class="text-sm text-green-light mt-1">查看和管理您的订单</p>
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- 主要内容区域 -->
-    <div class="container mx-auto px-4 mt-8">
-      <div class="bg-white rounded-lg shadow-md">
-        <!-- 订单类型选项卡 -->
-        <div class="border-b border-neutral">
-          <div class="flex overflow-x-auto">
-            <button
-              v-for="(tab, index) in filteredTabs"
-              :key="index"
-              @click="activeTab = tab.value"
-              :class="[
-                'px-6 py-4 font-medium whitespace-nowrap',
-                activeTab === tab.value
-                  ? 'text-primary border-b-2 border-primary'
-                  : 'text-neutral-dark hover:text-primary',
-              ]"
-            >
-              {{ tab.label }}
-              <span
-                v-if="tab.count !== undefined"
-                class="ml-2 px-2 py-1 text-xs rounded-full bg-neutral-light text-neutral-dark"
-                >{{ tab.count }}</span
-              >
-            </button>
-          </div>
-        </div>
-
-        <!-- 订单内容区域 -->
-        <div class="p-6">
-          <!-- 加载状态 -->
-          <div v-if="loading" class="flex justify-center py-12">
-            <div class="text-center">
-              <div
-                class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"
-              ></div>
-              <p class="mt-4 text-neutral-dark">正在加载订单数据...</p>
-            </div>
-          </div>
-
-          <!-- 错误状态 -->
-          <div v-else-if="error" class="py-12 text-center">
-            <div class="text-error text-lg mb-3">加载失败</div>
-            <p class="text-neutral-dark mb-6">{{ error }}</p>
-            <button
-              @click="fetchOrders"
-              class="px-4 py-2 bg-primary text-white rounded-md hover:bg-green-dark transition-colors"
-            >
-              重新加载
-            </button>
-          </div>
-
-          <!-- 我发布的修图订单 -->
-          <div v-else-if="activeTab === 'retouch-orders-placed'">
-            <div v-if="retouchOrdersPlaced.length > 0">
-              <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-neutral">
-                  <thead>
-                    <tr>
-                      <th
-                        class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
-                      >
-                        订单号
-                      </th>
-                      <th
-                        class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
-                      >
-                        修图师
-                      </th>
-                      <th
-                        class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
-                      >
-                        创建日期
-                      </th>
-                      <th
-                        class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
-                      >
-                        金额
-                      </th>
-                      <th
-                        class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
-                      >
-                        状态
-                      </th>
-                      <th
-                        class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
-                      >
-                        操作
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody class="bg-white divide-y divide-neutral">
-                    <tr v-for="order in retouchOrdersPlaced" :key="order.orderId">
-                      <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-primary">
-                        {{ order.orderId }}
-                      </td>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-dark">
-                        {{ order.retoucherName }}
-                      </td>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-dark">
-                        {{ formatDate(order.createdAt) }}
-                      </td>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-dark">
-                        ¥{{ order.price }}
-                      </td>
-                      <td class="px-6 py-4 whitespace-nowrap">
-                        <span
-                          :class="['px-2 py-1 text-xs rounded-full', getStatusClass(order.status)]"
-                        >
-                          {{ getStatusText(order.status) }}
-                        </span>
-                      </td>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-dark">
-                        <button
-                          @click="viewOrderDetails(order.orderId)"
-                          class="text-primary hover:text-green-dark"
-                        >
-                          查看详情
-                        </button>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+      <!-- 滚动内容区域 -->
+      <div class="flex-1 overflow-y-auto">
+        <div class="container mx-auto px-4 mt-8">
+          <div class="bg-white rounded-lg shadow-md">
+            <!-- 订单类型选项卡 -->
+            <div class="border-b border-neutral">
+              <div class="flex overflow-x-auto">
+                <button
+                  v-for="(tab, index) in filteredTabs"
+                  :key="index"
+                  @click="activeTab = tab.value"
+                  :class="[
+                    'px-6 py-4 font-medium whitespace-nowrap',
+                    activeTab === tab.value
+                      ? 'text-primary border-b-2 border-primary'
+                      : 'text-neutral-dark hover:text-primary',
+                  ]"
+                >
+                  {{ tab.label }}
+                  <span
+                    v-if="tab.count !== undefined"
+                    class="ml-2 px-2 py-1 text-xs rounded-full bg-neutral-light text-neutral-dark"
+                    >{{ tab.count }}</span
+                  >
+                </button>
               </div>
             </div>
-            <div v-else class="text-center py-12">
-              <div class="text-neutral-dark mb-4">您还没有发布任何修图订单</div>
-              <router-link
-                to="/retouch-service"
-                class="px-6 py-2 bg-primary text-white rounded-md hover:bg-green-dark transition-colors"
-              >
-                去寻找修图师
-              </router-link>
-            </div>
-          </div>
 
-          <!-- 我发布的摄影预约 -->
-          <div v-else-if="activeTab === 'photography-orders-placed'">
-            <div v-if="photographyOrdersPlaced.length > 0">
-              <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-neutral">
-                  <thead>
-                    <tr>
-                      <th
-                        class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
-                      >
-                        预约号
-                      </th>
-                      <th
-                        class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
-                      >
-                        摄影师
-                      </th>
-                      <th
-                        class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
-                      >
-                        预约日期
-                      </th>
-                      <th
-                        class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
-                      >
-                        金额
-                      </th>
-                      <th
-                        class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
-                      >
-                        状态
-                      </th>
-                      <th
-                        class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
-                      >
-                        操作
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody class="bg-white divide-y divide-neutral">
-                    <tr v-for="order in photographyOrdersPlaced" :key="order.id">
-                      <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-primary">
-                        {{ order.orderNumber }}
-                      </td>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-dark">
-                        {{ order.photographerName }}
-                      </td>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-dark">
-                        {{ formatDate(order.appointmentDate) }}
-                      </td>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-dark">
-                        ¥{{ order.amount }}
-                      </td>
-                      <td class="px-6 py-4 whitespace-nowrap">
-                        <span
-                          :class="['px-2 py-1 text-xs rounded-full', getStatusClass(order.status)]"
-                        >
-                          {{ getStatusText(order.status) }}
-                        </span>
-                      </td>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-dark">
-                        <button
-                          @click="viewOrderDetails(order.id)"
-                          class="text-primary hover:text-green-dark"
-                        >
-                          查看详情
-                        </button>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-            <div v-else class="text-center py-12">
-              <div class="text-neutral-dark mb-4">您还没有发布任何摄影预约</div>
-              <router-link
-                to="/photographers"
-                class="px-6 py-2 bg-primary text-white rounded-md hover:bg-green-dark transition-colors"
-              >
-                去寻找摄影师
-              </router-link>
-            </div>
-          </div>
-
-          <!-- 我收到的修图订单 -->
-          <div v-else-if="activeTab === 'retouch-orders-received'">
-            <div v-if="isRetoucher">
-              <div v-if="retouchOrdersReceived.length > 0">
-                <div class="overflow-x-auto">
-                  <table class="min-w-full divide-y divide-neutral">
-                    <thead>
-                      <tr>
-                        <th
-                          class="px-6 py-3 text-left text-xs font-medium text-primary uppercase tracking-wider"
-                        >
-                          订单号
-                        </th>
-                        <th
-                          class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
-                        >
-                          客户
-                        </th>
-                        <th
-                          class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
-                        >
-                          创建日期
-                        </th>
-                        <th
-                          class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
-                        >
-                          金额
-                        </th>
-                        <th
-                          class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
-                        >
-                          状态
-                        </th>
-                        <th
-                          class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
-                        >
-                          操作
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-neutral">
-                      <tr v-for="order in retouchOrdersReceived" :key="order.orderId">
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-primary">
-                          {{ order.orderId }}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-dark">
-                          {{ order.username }}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-dark">
-                          {{ formatDate(order.createdAt) }}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-dark">
-                          ¥{{ order.price }}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                          <span
-                            :class="[
-                              'px-2 py-1 text-xs rounded-full',
-                              getStatusClass(order.status),
-                            ]"
-                          >
-                            {{ getStatusText(order.status) }}
-                          </span>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-dark">
-                          <button
-                            @click="processOrder(order.orderId)"
-                            class="text-primary hover:text-green-dark"
-                          >
-                            处理订单
-                          </button>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
+            <!-- 订单内容区域 -->
+            <div class="p-6">
+              <!-- 加载状态 -->
+              <div v-if="loading" class="flex justify-center py-12">
+                <div class="text-center">
+                  <div
+                    class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"
+                  ></div>
+                  <p class="mt-4 text-neutral-dark">正在加载订单数据...</p>
                 </div>
               </div>
-              <div v-else class="text-center py-12">
-                <div class="text-neutral-dark mb-4">您还没有收到任何修图订单</div>
-                <p class="text-sm text-neutral-dark">
-                  完善您的修图师资料，提高曝光度，获得更多订单
-                </p>
-              </div>
-            </div>
-            <div v-else class="text-center py-12">
-              <div class="text-neutral-dark text-lg mb-3">您还不是认证修图师</div>
-              <p class="text-sm text-neutral-dark mb-6">
-                成为认证修图师可以接受修图订单，获得专业收入
-              </p>
-              <router-link
-                to="/retoucher-certification"
-                class="px-6 py-3 bg-primary text-white rounded-md hover:bg-green-dark transition-colors"
-              >
-                去认证修图师
-              </router-link>
-            </div>
-          </div>
 
-          <!-- 我收到的摄影预约 -->
-          <div v-else-if="activeTab === 'photography-orders-received'">
-            <div v-if="isPhotographer">
-              <div v-if="photographyOrdersReceived.length > 0">
-                <div class="overflow-x-auto">
-                  <table class="min-w-full divide-y divide-neutral">
-                    <thead>
-                      <tr>
-                        <th
-                          class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
-                        >
-                          预约号
-                        </th>
-                        <th
-                          class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
-                        >
-                          客户
-                        </th>
-                        <th
-                          class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
-                        >
-                          预约日期
-                        </th>
-                        <th
-                          class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
-                        >
-                          金额
-                        </th>
-                        <th
-                          class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
-                        >
-                          状态
-                        </th>
-                        <th
-                          class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
-                        >
-                          操作
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-neutral">
-                      <tr v-for="order in photographyOrdersReceived" :key="order.id">
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-primary">
-                          {{ order.orderNumber }}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-dark">
-                          {{ order.customerName }}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-dark">
-                          {{ formatDate(order.appointmentDate) }}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-dark">
-                          ¥{{ order.amount }}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                          <span
-                            :class="[
-                              'px-2 py-1 text-xs rounded-full',
-                              getStatusClass(order.status),
-                            ]"
+              <!-- 错误状态 -->
+              <div v-else-if="error" class="py-12 text-center">
+                <div class="text-error text-lg mb-3">加载失败</div>
+                <p class="text-neutral-dark mb-6">{{ error }}</p>
+                <button
+                  @click="fetchOrders"
+                  class="px-4 py-2 bg-primary text-white rounded-md hover:bg-green-dark transition-colors"
+                >
+                  重新加载
+                </button>
+              </div>
+
+              <!-- 我发布的修图订单 -->
+              <div v-else-if="activeTab === 'retouch-orders-placed'">
+                <div v-if="retouchOrdersPlaced.length > 0">
+                  <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-neutral">
+                      <thead>
+                        <tr>
+                          <th
+                            class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
                           >
-                            {{ getStatusText(order.status) }}
-                          </span>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-dark">
-                          <button
-                            @click="processOrder(order.id)"
-                            class="text-primary hover:text-green-dark"
+                            订单号
+                          </th>
+                          <th
+                            class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
                           >
-                            处理预约
-                          </button>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
+                            修图师
+                          </th>
+                          <th
+                            class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
+                          >
+                            创建日期
+                          </th>
+                          <th
+                            class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
+                          >
+                            金额
+                          </th>
+                          <th
+                            class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
+                          >
+                            状态
+                          </th>
+                          <th
+                            class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
+                          >
+                            操作
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody class="bg-white divide-y divide-neutral">
+                        <tr v-for="order in retouchOrdersPlaced" :key="order.orderId">
+                          <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-primary">
+                            {{ order.orderId }}
+                          </td>
+                          <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-dark">
+                            {{ order.retoucherName }}
+                          </td>
+                          <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-dark">
+                            {{ formatDate(order.createdAt) }}
+                          </td>
+                          <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-dark">
+                            ¥{{ order.price }}
+                          </td>
+                          <td class="px-6 py-4 whitespace-nowrap">
+                            <span
+                              :class="[
+                                'px-2 py-1 text-xs rounded-full',
+                                getStatusClass(order.status),
+                              ]"
+                            >
+                              {{ getStatusText(order.status) }}
+                            </span>
+                          </td>
+                          <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-dark">
+                            <button
+                              @click="viewOrderDetails(order.orderId)"
+                              class="text-primary hover:text-green-dark"
+                            >
+                              查看详情
+                            </button>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                <div v-else class="text-center py-12">
+                  <div class="text-neutral-dark mb-4">您还没有发布任何修图订单</div>
+                  <router-link
+                    to="/retouch-service"
+                    class="px-6 py-2 bg-primary text-white rounded-md hover:bg-green-dark transition-colors"
+                  >
+                    去寻找修图师
+                  </router-link>
                 </div>
               </div>
-              <div v-else class="text-center py-12">
-                <div class="text-neutral-dark mb-4">您还没有收到任何摄影预约</div>
-                <p class="text-sm text-neutral-dark">
-                  完善您的摄影师资料，提高曝光度，获得更多预约
-                </p>
+
+              <!-- 我发布的摄影预约 -->
+              <div v-else-if="activeTab === 'photography-orders-placed'">
+                <div v-if="photographyOrdersPlaced.length > 0">
+                  <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-neutral">
+                      <thead>
+                        <tr>
+                          <th
+                            class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
+                          >
+                            预约号
+                          </th>
+                          <th
+                            class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
+                          >
+                            摄影师
+                          </th>
+                          <th
+                            class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
+                          >
+                            预约日期
+                          </th>
+                          <th
+                            class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
+                          >
+                            金额
+                          </th>
+                          <th
+                            class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
+                          >
+                            状态
+                          </th>
+                          <th
+                            class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
+                          >
+                            操作
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody class="bg-white divide-y divide-neutral">
+                        <tr v-for="order in photographyOrdersPlaced" :key="order.id">
+                          <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-primary">
+                            {{ order.orderNumber }}
+                          </td>
+                          <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-dark">
+                            {{ order.photographerName }}
+                          </td>
+                          <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-dark">
+                            {{ formatDate(order.appointmentDate) }}
+                          </td>
+                          <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-dark">
+                            ¥{{ order.amount }}
+                          </td>
+                          <td class="px-6 py-4 whitespace-nowrap">
+                            <span
+                              :class="[
+                                'px-2 py-1 text-xs rounded-full',
+                                getStatusClass(order.status),
+                              ]"
+                            >
+                              {{ getStatusText(order.status) }}
+                            </span>
+                          </td>
+                          <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-dark">
+                            <button
+                              @click="viewOrderDetails(order.id)"
+                              class="text-primary hover:text-green-dark"
+                            >
+                              查看详情
+                            </button>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                <div v-else class="text-center py-12">
+                  <div class="text-neutral-dark mb-4">您还没有发布任何摄影预约</div>
+                  <router-link
+                    to="/photographers"
+                    class="px-6 py-2 bg-primary text-white rounded-md hover:bg-green-dark transition-colors"
+                  >
+                    去寻找摄影师
+                  </router-link>
+                </div>
               </div>
-            </div>
-            <div v-else class="text-center py-12">
-              <div class="text-neutral-dark text-lg mb-3">您还不是认证摄影师</div>
-              <p class="text-sm text-neutral-dark mb-6">
-                成为认证摄影师可以接受摄影预约，获得专业收入
-              </p>
-              <router-link
-                to="/photographer-certification"
-                class="px-6 py-3 bg-primary text-white rounded-md hover:bg-green-dark transition-colors"
-              >
-                去认证摄影师
-              </router-link>
+
+              <!-- 我收到的修图订单 -->
+              <div v-else-if="activeTab === 'retouch-orders-received'">
+                <div v-if="isRetoucher">
+                  <div v-if="retouchOrdersReceived.length > 0">
+                    <div class="overflow-x-auto">
+                      <table class="min-w-full divide-y divide-neutral">
+                        <thead>
+                          <tr>
+                            <th
+                              class="px-6 py-3 text-left text-xs font-medium text-primary uppercase tracking-wider"
+                            >
+                              订单号
+                            </th>
+                            <th
+                              class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
+                            >
+                              客户
+                            </th>
+                            <th
+                              class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
+                            >
+                              创建日期
+                            </th>
+                            <th
+                              class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
+                            >
+                              金额
+                            </th>
+                            <th
+                              class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
+                            >
+                              状态
+                            </th>
+                            <th
+                              class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
+                            >
+                              操作
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-neutral">
+                          <tr v-for="order in retouchOrdersReceived" :key="order.orderId">
+                            <td
+                              class="px-6 py-4 whitespace-nowrap text-sm font-medium text-primary"
+                            >
+                              {{ order.orderId }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-dark">
+                              {{ order.username }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-dark">
+                              {{ formatDate(order.createdAt) }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-dark">
+                              ¥{{ order.price }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                              <span
+                                :class="[
+                                  'px-2 py-1 text-xs rounded-full',
+                                  getStatusClass(order.status),
+                                ]"
+                              >
+                                {{ getStatusText(order.status) }}
+                              </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-dark">
+                              <button
+                                @click="processOrder(order.orderId)"
+                                class="text-primary hover:text-green-dark"
+                              >
+                                处理订单
+                              </button>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                  <div v-else class="text-center py-12">
+                    <div class="text-neutral-dark mb-4">您还没有收到任何修图订单</div>
+                    <p class="text-sm text-neutral-dark">
+                      完善您的修图师资料，提高曝光度，获得更多订单
+                    </p>
+                  </div>
+                </div>
+                <div v-else class="text-center py-12">
+                  <div class="text-neutral-dark text-lg mb-3">您还不是认证修图师</div>
+                  <p class="text-sm text-neutral-dark mb-6">
+                    成为认证修图师可以接受修图订单，获得专业收入
+                  </p>
+                  <router-link
+                    to="/retoucher-certification"
+                    class="px-6 py-3 bg-primary text-white rounded-md hover:bg-green-dark transition-colors"
+                  >
+                    去认证修图师
+                  </router-link>
+                </div>
+              </div>
+
+              <!-- 我收到的摄影预约 -->
+              <div v-else-if="activeTab === 'photography-orders-received'">
+                <div v-if="isPhotographer">
+                  <div v-if="photographyOrdersReceived.length > 0">
+                    <div class="overflow-x-auto">
+                      <table class="min-w-full divide-y divide-neutral">
+                        <thead>
+                          <tr>
+                            <th
+                              class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
+                            >
+                              预约号
+                            </th>
+                            <th
+                              class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
+                            >
+                              客户
+                            </th>
+                            <th
+                              class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
+                            >
+                              预约日期
+                            </th>
+                            <th
+                              class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
+                            >
+                              金额
+                            </th>
+                            <th
+                              class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
+                            >
+                              状态
+                            </th>
+                            <th
+                              class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
+                            >
+                              操作
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-neutral">
+                          <tr v-for="order in photographyOrdersReceived" :key="order.id">
+                            <td
+                              class="px-6 py-4 whitespace-nowrap text-sm font-medium text-primary"
+                            >
+                              {{ order.orderNumber }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-dark">
+                              {{ order.customerName }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-dark">
+                              {{ formatDate(order.appointmentDate) }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-dark">
+                              ¥{{ order.amount }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                              <span
+                                :class="[
+                                  'px-2 py-1 text-xs rounded-full',
+                                  getStatusClass(order.status),
+                                ]"
+                              >
+                                {{ getStatusText(order.status) }}
+                              </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-dark">
+                              <button
+                                @click="processOrder(order.id)"
+                                class="text-primary hover:text-green-dark"
+                              >
+                                处理预约
+                              </button>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                  <div v-else class="text-center py-12">
+                    <div class="text-neutral-dark mb-4">您还没有收到任何摄影预约</div>
+                    <p class="text-sm text-neutral-dark">
+                      完善您的摄影师资料，提高曝光度，获得更多预约
+                    </p>
+                  </div>
+                </div>
+                <div v-else class="text-center py-12">
+                  <div class="text-neutral-dark text-lg mb-3">您还不是认证摄影师</div>
+                  <p class="text-sm text-neutral-dark mb-6">
+                    成为认证摄影师可以接受摄影预约，获得专业收入
+                  </p>
+                  <router-link
+                    to="/photographer-certification"
+                    class="px-6 py-3 bg-primary text-white rounded-md hover:bg-green-dark transition-colors"
+                  >
+                    去认证摄影师
+                  </router-link>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -437,6 +455,7 @@ import { defineComponent, ref, computed, onMounted } from 'vue'
 import { useUserStore } from '../stores/userStore'
 import { useRouter } from 'vue-router'
 import apiClient from '../services/apiService'
+import SideBar from '../components/SideBar.vue'
 
 interface OrderTab {
   label: string
@@ -446,6 +465,9 @@ interface OrderTab {
 
 export default defineComponent({
   name: 'MyOrdersView',
+  components: {
+    SideBar,
+  },
   setup() {
     const router = useRouter()
     const userStore = useUserStore()

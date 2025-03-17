@@ -342,16 +342,17 @@ export default defineComponent({
           // 生成完整名字或使用用户名
           const fullName = [r.firstName, r.lastName].filter(Boolean).join(' ') || r.username
 
-          // 从expertise字段中提取分类
-          const categories = r.expertise.split('、').map((item) => item.trim())
+          // 从expertise字段中提取分类，处理null情况
+          const expertiseText = r.expertise || '通用修图'
+          const categories = expertiseText.split('、').map((item) => item.trim())
 
           return {
             id: r.retoucherId,
             userId: r.userId, // 保存userId
             name: fullName,
-            price: r.pricePerPhoto,
+            price: r.pricePerPhoto || 0, // 处理null价格，默认为0
             categories: categories,
-            description: r.bio,
+            description: r.bio || '暂无描述', // 处理null描述
             coverImage: `https://avatars.dicebear.com/api/initials/${encodeURIComponent(r.username)}.svg`,
             experience: 'advanced', // 默认经验级别
           }

@@ -222,7 +222,7 @@
                 <div class="absolute left-0 top-0 bottom-0 w-0.5 bg-neutral-light"></div>
 
                 <!-- 创建订单 -->
-                <div class="relative mb-6">
+                <div class="relative mb-6 pl-8">
                   <div
                     class="absolute left-0 -translate-x-1/2 w-4 h-4 rounded-full bg-primary"
                   ></div>
@@ -233,7 +233,7 @@
                 </div>
 
                 <!-- 修图师接单 -->
-                <div class="relative mb-6">
+                <div class="relative mb-6 pl-8">
                   <div
                     class="absolute left-0 -translate-x-1/2 w-4 h-4 rounded-full"
                     :class="orderDetails.status !== 'Pending' ? 'bg-primary' : 'bg-neutral'"
@@ -252,7 +252,7 @@
                 </div>
 
                 <!-- 修图中 -->
-                <div class="relative mb-6">
+                <div class="relative mb-6 pl-8">
                   <div
                     class="absolute left-0 -translate-x-1/2 w-4 h-4 rounded-full"
                     :class="
@@ -283,7 +283,7 @@
                 </div>
 
                 <!-- 订单完成 -->
-                <div class="relative">
+                <div class="relative pl-8">
                   <div
                     class="absolute left-0 -translate-x-1/2 w-4 h-4 rounded-full"
                     :class="orderDetails.status === 'Completed' ? 'bg-primary' : 'bg-neutral'"
@@ -311,7 +311,7 @@
 
         <!-- 右侧照片预览 -->
         <div class="md:col-span-1">
-          <div class="bg-white rounded-lg shadow-md p-6">
+          <div class="bg-white rounded-lg shadow-md p-6 mb-6">
             <h2 class="text-xl font-semibold text-neutral-dark mb-4">原始照片</h2>
 
             <div v-if="photoLoaded" class="space-y-4">
@@ -335,6 +335,35 @@
 
             <div v-else class="h-64 bg-neutral-light flex items-center justify-center rounded-lg">
               <p class="text-neutral-dark">加载照片中...</p>
+            </div>
+          </div>
+
+          <!-- 修图后照片显示 -->
+          <div
+            v-if="orderDetails.status === 'Completed' && orderDetails.retouchedPhotoId"
+            class="bg-white rounded-lg shadow-md p-6"
+          >
+            <h2 class="text-xl font-semibold text-neutral-dark mb-4">修图后照片</h2>
+            <div v-if="retouchedPhotoLoaded" class="space-y-4">
+              <div class="border border-neutral rounded-lg overflow-hidden">
+                <img
+                  :src="retouchedPhotoUrl"
+                  :alt="orderDetails.retouchedPhotoTitle"
+                  class="w-full h-auto"
+                  @click="openImageViewer(retouchedPhotoUrl)"
+                />
+              </div>
+              <div class="text-center mt-2">
+                <button
+                  @click="downloadRetouchedImage"
+                  class="px-4 py-2 text-sm border border-primary text-primary rounded-md hover:bg-green-50 transition-colors"
+                >
+                  下载修图后照片
+                </button>
+              </div>
+            </div>
+            <div v-else class="h-64 bg-neutral-light flex items-center justify-center rounded-lg">
+              <p class="text-neutral-dark">加载修图后照片中...</p>
             </div>
           </div>
         </div>
@@ -389,6 +418,10 @@ export default defineComponent({
     const fileInput = ref<HTMLInputElement | null>(null)
     const selectedFile = ref<File | null>(null)
     const previewUrl = ref('')
+
+    // 修图后照片相关
+    const retouchedPhotoUrl = ref('')
+    const retouchedPhotoLoaded = ref(false)
 
     // 计算属性：根据当前订单状态判断可执行的操作
     const canAccept = computed(() => {
@@ -475,6 +508,13 @@ export default defineComponent({
 
         // 获取照片URL
         await fetchPhotoUrl()
+
+        console.log('订单状态:', orderDetails.value.status)
+
+        // 获取修图后照片URL
+        if (orderDetails.value.status === 'Completed' && orderDetails.value.retouchedPhotoId) {
+          await fetchRetouchedPhotoUrl()
+        }
       } catch (err: any) {
         console.error('获取订单详情失败:', err)
         error.value = '获取订单详情失败，请稍后再试'
@@ -532,6 +572,26 @@ export default defineComponent({
       } catch (err) {
         console.error('获取照片信息失败:', err)
         error.value = '获取照片信息失败，请稍后再试'
+      }
+    }
+
+    // 额外获取修图后照片
+    const fetchRetouchedPhotoUrl = async () => {
+      try {
+        console.log(`正在获取修图后照片信息，照片ID: ${orderDetails.value.retouchedPhotoId}`)
+        // ...similar logic to fetchPhotoUrl...
+        // build the full retouchedPhotoUrl.value
+        const staticAssetsUrl = import.meta.env.VITE_STATIC_ASSETS_URL || ''
+        let retouchedPhotoPath = orderDetails.value.retouchedPhotoPath
+        if (!retouchedPhotoPath.startsWith('http') && !retouchedPhotoPath.startsWith('/uploads')) {
+          retouchedPhotoPath = `/uploads/${retouchedPhotoPath}`
+        }
+        retouchedPhotoUrl.value = retouchedPhotoPath.startsWith('http')
+          ? retouchedPhotoPath
+          : `${staticAssetsUrl}${retouchedPhotoPath}`
+        retouchedPhotoLoaded.value = true
+      } catch (err) {
+        console.error('加载修图后照片失败:', err)
       }
     }
 
@@ -717,6 +777,52 @@ export default defineComponent({
       }
     }
 
+    // 下载修图后照片
+    const downloadRetouchedImage = () => {
+      if (!retouchedPhotoUrl.value) {
+        alert('修图后照片链接不可用，无法下载')
+        return
+      }
+
+      try {
+        // 创建一个隐藏的a标签来触发下载
+        const link = document.createElement('a')
+        link.href = retouchedPhotoUrl.value
+
+        // 从URL中提取文件名，如果无法提取，使用订单号和照片标题创建文件名
+        let filename = ''
+        try {
+          // 尝试从URL中提取文件名
+          const urlParts = new URL(retouchedPhotoUrl.value).pathname.split('/')
+          filename = urlParts[urlParts.length - 1]
+        } catch (e) {
+          // 如果URL解析失败，使用订单信息创建文件名
+          const fileExtension = retouchedPhotoUrl.value.toLowerCase().endsWith('.png')
+            ? '.png'
+            : '.jpg'
+          filename = `订单${orderDetails.value.orderId}-${orderDetails.value.retouchedPhotoTitle}${fileExtension}`
+        }
+
+        // 设置下载的文件名
+        link.download = filename
+
+        // 添加到文档中并触发点击
+        document.body.appendChild(link)
+        link.click()
+
+        // 清理DOM
+        document.body.removeChild(link)
+
+        console.log('开始下载修图后照片:', filename)
+      } catch (err) {
+        console.error('下载修图后照片失败:', err)
+        alert('下载修图后照片失败，请尝试右键点击照片并选择"图片另存为"')
+
+        // 回退到简单的窗口打开方式
+        window.open(retouchedPhotoUrl.value, '_blank')
+      }
+    }
+
     // 图片查看器
     const openImageViewer = (url: string) => {
       imageViewerUrl.value = url
@@ -746,6 +852,8 @@ export default defineComponent({
       fileInput,
       selectedFile,
       previewUrl,
+      retouchedPhotoUrl,
+      retouchedPhotoLoaded,
       canAccept,
       canReject,
       canStartProcessing,
@@ -761,6 +869,7 @@ export default defineComponent({
       removeSelectedFile,
       completeOrder,
       downloadOriginalImage,
+      downloadRetouchedImage,
       openImageViewer,
       closeImageViewer,
     }
