@@ -222,6 +222,7 @@
               v-for="(photo, index) in filteredPhotographyPortfolio"
               :key="index"
               class="bg-white rounded-lg shadow-md overflow-hidden group cursor-pointer hover:shadow-lg transition-shadow"
+              @click="viewPhotographyPortfolioDetails(photo)"
             >
               <div class="aspect-video relative">
                 <img
@@ -980,6 +981,20 @@ export default defineComponent({
       })
     }
 
+    // 查看摄影作品集详情
+    const viewPhotographyPortfolioDetails = (portfolio: any) => {
+      console.log('查看摄影作品集详情:', {
+        id: portfolio.portfolioId,
+        title: portfolio.title,
+        items: portfolio.items?.length || 0,
+      })
+      // 使用路由导航到详情页面
+      router.push({
+        name: 'photographer-portfolio-detail',
+        params: { id: portfolio.portfolioId.toString() },
+      })
+    }
+
     // 监听作品类型变化，切换到修图作品时加载数据
     watch(portfolioType, async (newType) => {
       console.log('作品类型切换为:', newType)
@@ -1030,6 +1045,7 @@ export default defineComponent({
       getCategoryName,
       getImageUrl,
       viewPortfolioDetails,
+      viewPhotographyPortfolioDetails, // Add this line
       retoucherId, // 添加到返回值供模板使用
       photographerId, // 添加到返回值供模板使用
       filteredPhotographyPortfolio,

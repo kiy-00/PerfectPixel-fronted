@@ -76,6 +76,12 @@ const router = createRouter({
       },
     },
     {
+      path: '/portfolio/photographer/:id',
+      name: 'photographer-portfolio-detail',
+      component: () => import('../views/PhotographerPortfolioDetailView.vue'),
+      props: true,
+    },
+    {
       path: '/photographer-certification',
       name: 'photographer-certification',
       component: PhotographerCertificationView,
