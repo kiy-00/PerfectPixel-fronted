@@ -343,12 +343,13 @@
 
                   <!-- 无摄影作品状态 -->
                   <div v-else class="bg-neutral bg-opacity-20 rounded-lg p-6 text-center">
-                    <div class="text-neutral-dark">暂无摄影作品</div>
-                    <button
+                    <div class="text-neutral-dark mb-4">暂无摄影作品</div>
+                    <router-link
+                      to="/portfolio/photographer/create"
                       class="mt-4 px-4 py-2 bg-primary text-white rounded-md hover:bg-green-dark transition-colors"
                     >
                       上传第一张摄影作品
-                    </button>
+                    </router-link>
                   </div>
                 </template>
 
@@ -412,10 +413,13 @@
                       :key="`placeholder-${i}`"
                       class="bg-neutral bg-opacity-20 rounded-lg aspect-square flex items-center justify-center"
                     >
-                      <div class="text-neutral-dark text-center">
+                      <router-link
+                        to="/portfolio/retoucher/create"
+                        class="text-neutral-dark text-center"
+                      >
                         <div class="text-3xl mb-2">+</div>
                         <div>添加更多作品集</div>
-                      </div>
+                      </router-link>
                     </div>
                   </div>
 

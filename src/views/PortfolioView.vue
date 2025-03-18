@@ -286,7 +286,11 @@
 
           <!-- 空状态 -->
           <div
-            v-if="filteredPhotographyPortfolio.length === 0"
+            v-if="
+              !photographyPortfolio ||
+              !filteredPhotographyPortfolio ||
+              filteredPhotographyPortfolio.length === 0
+            "
             class="bg-white rounded-lg shadow-md p-8 text-center"
           >
             <svg
@@ -305,11 +309,12 @@
             </svg>
             <h3 class="text-lg font-medium text-neutral-dark mb-2">暂无作品</h3>
             <p class="text-neutral-dark mb-4">您还没有上传任何摄影作品</p>
-            <button
+            <router-link
+              to="/portfolio/photographer/create"
               class="px-4 py-2 bg-primary text-white rounded-md hover:bg-green-dark transition-colors"
             >
               开始上传
-            </button>
+            </router-link>
           </div>
         </div>
 
@@ -479,11 +484,14 @@
         <p>活动标签: {{ activeTab }}</p>
         <p>API基础URL: {{ apiBaseUrl }}</p>
         <p>静态资源URL: {{ staticBaseUrl }}</p>
-        <p>获取到的作品集数量: {{ retoucherPortfolios.length }}</p>
-        <p>筛选后的作品集数量: {{ filteredRetoucherPortfolios.length }}</p>
+        <p>获取到的作品集数量: {{ retoucherPortfolios ? retoucherPortfolios.length : 0 }}</p>
+        <p>
+          筛选后的作品集数量:
+          {{ filteredRetoucherPortfolios ? filteredRetoucherPortfolios.length : 0 }}
+        </p>
         <p>加载状态: {{ loadingRetoucherPortfolios ? '加载中' : '已完成' }}</p>
         <p>错误信息: {{ error || '无' }}</p>
-        <div v-if="retoucherPortfolios.length > 0" class="mt-2">
+        <div v-if="retoucherPortfolios && retoucherPortfolios.length > 0" class="mt-2">
           <p>第一个作品集封面URL: {{ retoucherPortfolios[0].coverImageUrl }}</p>
           <p>处理后的封面URL: {{ getImageUrl(retoucherPortfolios[0].coverImageUrl) }}</p>
         </div>
@@ -614,12 +622,22 @@ export default defineComponent({
 
     // 根据标签筛选的摄影作品
     const filteredPhotographyPortfolio = computed(() => {
+      console.log('[DEBUG] computing filteredPhotographyPortfolio, activeTab:', activeTab.value)
+
+      if (!photographyPortfolio.value || !Array.isArray(photographyPortfolio.value)) {
+        console.error(
+          '[ERROR] photographyPortfolio is undefined or not an array:',
+          photographyPortfolio.value,
+        )
+        return []
+      }
+
       if (activeTab.value === 'all') {
         return photographyPortfolio.value
       } else if (activeTab.value === 'public') {
-        return photographyPortfolio.value.filter((item) => item.isPublic)
+        return photographyPortfolio.value.filter((item) => item && item.isPublic)
       } else {
-        return photographyPortfolio.value.filter((item) => !item.isPublic)
+        return photographyPortfolio.value.filter((item) => item && !item.isPublic)
       }
     })
 
@@ -636,25 +654,59 @@ export default defineComponent({
 
     // 修图作品集数据
     const retoucherPortfolios = ref<RetoucherPortfolio[]>([])
-    const loadingRetoucherPortfolios = ref(false)
 
     // 根据标签筛选的修图作品
     const filteredRetoucherPortfolios = computed(() => {
-      console.log('计算筛选的修图作品集，当前标签:', activeTab.value)
-      console.log('总作品集数量:', retoucherPortfolios.value.length)
+      console.log(
+        '[DEBUG] filteredRetoucherPortfolios: start computation, activeTab:',
+        activeTab.value,
+      )
+
+      // Check if the source array exists and is an array
+      if (!retoucherPortfolios.value) {
+        console.error('[ERROR] retoucherPortfolios.value is undefined!')
+        return []
+      }
+      if (!Array.isArray(retoucherPortfolios.value)) {
+        console.error(
+          '[ERROR] retoucherPortfolios.value is not an array:',
+          retoucherPortfolios.value,
+        )
+        return []
+      }
+
+      console.log('[DEBUG] retoucherPortfolios contents:', retoucherPortfolios.value)
+      console.log('[DEBUG] Total portfolios count:', retoucherPortfolios.value.length)
 
       let result
       if (activeTab.value === 'all') {
         result = retoucherPortfolios.value
       } else if (activeTab.value === 'public') {
-        result = retoucherPortfolios.value.filter((item) => item.isPublic === true)
+        result = retoucherPortfolios.value.filter((item) => {
+          if (!item) {
+            console.error('[ERROR] Encountered an undefined portfolio item in public filter')
+            return false
+          }
+          return item.isPublic === true
+        })
       } else {
-        result = retoucherPortfolios.value.filter((item) => item.isPublic === false)
+        result = retoucherPortfolios.value.filter((item) => {
+          if (!item) {
+            console.error('[ERROR] Encountered an undefined portfolio item in private filter')
+            return false
+          }
+          return item.isPublic === false
+        })
       }
-
-      console.log('筛选后作品集数量:', result.length)
+      if (!result) {
+        console.error('[ERROR] Result of filtering is undefined!')
+        return []
+      }
+      console.log('[DEBUG] Filtered portfolios count:', result.length)
       return result
     })
+
+    const loadingRetoucherPortfolios = ref(false)
 
     // 角色ID状态
     const retoucherId = ref<number | null>(null)
@@ -763,6 +815,7 @@ export default defineComponent({
         const privateResponse = await retoucherPortfolioAPI.getPrivatePortfolios(currentRetoucherId)
         console.log('私密作品集数量:', privateResponse.data?.length || 0)
 
+        // Ensure we're initializing with an empty array if the response is invalid
         const publicData = Array.isArray(publicResponse.data) ? publicResponse.data : []
         const privateData = Array.isArray(privateResponse.data) ? privateResponse.data : []
 
@@ -779,7 +832,8 @@ export default defineComponent({
           portfolio.isPublic = !!portfolio.isPublic // 确保是布尔值
         })
 
-        retoucherPortfolios.value = allPortfolios
+        // Initialize retoucherPortfolios with an empty array if it's undefined
+        retoucherPortfolios.value = allPortfolios || []
         console.log('成功更新修图作品集数据')
 
         // 如果数据为空，记录更多信息
@@ -801,6 +855,9 @@ export default defineComponent({
         }
 
         error.value = `${errorMsg}，请稍后再试`
+
+        // Make sure to set the value to an empty array on error
+        retoucherPortfolios.value = []
       } finally {
         loadingRetoucherPortfolios.value = false
       }

@@ -11,6 +11,7 @@ import RetoucherPortfolioDetailView from '../views/RetoucherPortfolioDetailView.
 import PhotographerCertificationView from '../views/PhotographerCertificationView.vue'
 import PhotographerPortfolioLinksView from '../views/PhotographerPortfolioLinksView.vue'
 import PhotographerVerificationView from '../views/PhotographerVerificationView.vue'
+import PhotographerPortfolioCreateView from '../views/PhotographerPortfolioCreateView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -64,6 +65,15 @@ const router = createRouter({
       name: 'retoucher-portfolio-detail',
       component: RetoucherPortfolioDetailView,
       props: true,
+    },
+    {
+      path: '/portfolio/photographer/create',
+      name: 'photographer-portfolio-create',
+      component: PhotographerPortfolioCreateView,
+      meta: {
+        requiresAuth: true,
+        requiresPhotographer: true,
+      },
     },
     {
       path: '/photographer-certification',
