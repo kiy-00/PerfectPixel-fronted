@@ -78,33 +78,6 @@
             <p class="text-xs text-neutral-dark mt-1">请选择一个与您作品内容最匹配的分类</p>
           </div>
 
-          <!-- 拍摄地点 -->
-          <div>
-            <label for="location" class="block text-sm font-medium text-neutral-dark"
-              >拍摄地点</label
-            >
-            <input
-              type="text"
-              id="location"
-              v-model="formData.location"
-              class="mt-1 block w-full rounded-md border border-neutral bg-white py-2 px-3 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-              placeholder="例如：上海外滩、杭州西湖"
-            />
-          </div>
-
-          <!-- 拍摄日期 -->
-          <div>
-            <label for="shootDate" class="block text-sm font-medium text-neutral-dark"
-              >拍摄日期</label
-            >
-            <input
-              type="date"
-              id="shootDate"
-              v-model="formData.shootDate"
-              class="mt-1 block w-full rounded-md border border-neutral bg-white py-2 px-3 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-          </div>
-
           <!-- 是否公开 -->
           <div class="flex items-start">
             <div class="flex items-center h-5">
@@ -252,7 +225,8 @@
 import { defineComponent, reactive, ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/userStore'
-import { getAssetUrl } from '../utils/urlUtils'
+import { photographerPortfolioAPI } from '../services/apiService'
+import { getAssetUrl } from '../utils/urlUtils' // Import utility for handling image URLs
 
 export default defineComponent({
   name: 'PhotographerPortfolioCreateView',
@@ -273,7 +247,7 @@ export default defineComponent({
       return isSuccess.value && createdPortfolioId.value !== null
     })
 
-    // 摄影作品分类选项
+    // 摄影作品分类选项 - 与修图师作品集使用相同的分类
     const categories = [
       { value: 'Portrait', label: '人像摄影' },
       { value: 'Wedding', label: '婚礼摄影' },
@@ -299,8 +273,6 @@ export default defineComponent({
       description: '',
       categoryDisplay: '', // 显示给用户看的中文分类
       category: '', // 实际提交给API的英文分类
-      location: '',
-      shootDate: '',
       isPublic: true,
       coverImageUrl: '',
       coverImageFile: null as File | null,
@@ -367,51 +339,56 @@ export default defineComponent({
         // 表单验证
         if (!formData.title) {
           error.value = '请输入作品集标题'
+          isLoading.value = false
           return
         }
 
-        if (!formData.description) {
-          error.value = '请输入作品集描述'
+        if (formData.title.length > 100) {
+          error.value = '作品集标题不能超过100个字符'
+          isLoading.value = false
+          return
+        }
+
+        if (formData.description && formData.description.length > 1000) {
+          error.value = '作品集描述不能超过1000个字符'
+          isLoading.value = false
           return
         }
 
         if (!formData.categoryDisplay) {
           error.value = '请选择作品集分类'
+          isLoading.value = false
           return
         }
 
         // 确保category已经被设置为对应的英文值
         formData.category = getCategoryValue(formData.categoryDisplay)
 
-        // 创建作品集 - 使用简化的请求体格式，使用英文category值
+        // 创建作品集 - 按照CreatePortfolioBaseRequest格式
         const portfolioData = {
           title: formData.title,
-          description: formData.description,
+          description: formData.description || '',
           category: formData.category,
-          location: formData.location || null,
-          shootDate: formData.shootDate || null,
           isPublic: formData.isPublic,
         }
 
         console.log('正在创建摄影作品集:', portfolioData)
 
-        // 这里会调用API创建作品集
-        // const response = await photographerPortfolioAPI.create(portfolioData)
-        // console.log('作品集创建成功:', response.data)
-        // createdPortfolioId.value = response.data.portfolioId
-
-        // 模拟API响应
-        setTimeout(() => {
-          isSuccess.value = true
-          createdPortfolioId.value = 123 // 模拟返回的ID
-          console.log(`已保存作品集ID: ${createdPortfolioId.value}`)
-        }, 1000)
+        const response = await photographerPortfolioAPI.create(portfolioData)
+        console.log('作品集创建成功:', response.data)
+        isSuccess.value = true
+        createdPortfolioId.value = response.data.portfolioId
+        console.log(`已保存作品集ID: ${createdPortfolioId.value}`)
       } catch (err: any) {
         console.error('创建作品集失败:', err)
+
+        // 增强错误处理，匹配修图师作品集创建的错误处理方式
         if (err.response?.status === 400) {
-          error.value = err.response?.data?.message || '请求参数错误'
+          error.value = err.response.data.message || '请求参数错误'
         } else if (err.response?.status === 401) {
           error.value = '登录已过期，请重新登录'
+        } else if (err.response?.status === 403) {
+          error.value = '您没有摄影师权限，无法创建作品集'
         } else {
           error.value = '创建作品集失败，请稍后再试'
         }
@@ -438,22 +415,26 @@ export default defineComponent({
 
         console.log(`开始上传封面图片到作品集 #${createdPortfolioId.value}`)
 
-        // 调用API上传封面图片
-        // const response = await photographerPortfolioAPI.uploadCover(
-        //   createdPortfolioId.value,
-        //   formData.coverImageFile
-        // )
+        const response = await photographerPortfolioAPI.uploadCover(
+          createdPortfolioId.value,
+          formData.coverImageFile,
+        )
 
-        // 模拟上传成功
-        setTimeout(() => {
-          console.log('封面上传成功')
-          formData.coverImageUrl = URL.createObjectURL(formData.coverImageFile as File)
-          createdPortfolioId.value = null
-        }, 1000)
+        console.log('封面上传成功:', response.data)
+
+        // 处理返回的图片URL
+        if (response.data && response.data.coverUrl) {
+          formData.coverImageUrl = getAssetUrl(response.data.coverUrl)
+        }
+
+        // 完成流程，关闭封面上传表单
+        createdPortfolioId.value = null
       } catch (err: any) {
         console.error('上传封面图片失败:', err)
+
+        // 增强错误处理，匹配修图师作品集创建的错误处理方式
         if (err.response?.status === 400) {
-          error.value = err.response?.data?.message || '上传文件无效'
+          error.value = '上传文件无效'
         } else if (err.response?.status === 401) {
           error.value = '登录已过期，请重新登录'
         } else if (err.response?.status === 403) {
@@ -479,8 +460,6 @@ export default defineComponent({
       formData.description = ''
       formData.categoryDisplay = ''
       formData.category = ''
-      formData.location = ''
-      formData.shootDate = ''
       formData.isPublic = true
       formData.coverImageUrl = ''
       formData.coverImageFile = null

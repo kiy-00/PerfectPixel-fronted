@@ -271,7 +271,6 @@ export default defineComponent({
       description: '',
       categoryDisplay: '', // 显示给用户看的中文分类
       category: '', // 实际提交给API的英文分类
-      tags: [] as string[],
       isPublic: true,
       coverImageUrl: '',
       coverImageFile: null as File | null,
@@ -298,24 +297,6 @@ export default defineComponent({
         return
       }
     })
-
-    // 添加标签
-    const addTag = () => {
-      if (!newTag.value.trim()) return
-      if (formData.tags.length >= 10) {
-        error.value = '最多只能添加10个标签'
-        return
-      }
-      if (!formData.tags.includes(newTag.value.trim())) {
-        formData.tags.push(newTag.value.trim())
-      }
-      newTag.value = ''
-    }
-
-    // 移除标签
-    const removeTag = (index: number) => {
-      formData.tags.splice(index, 1)
-    }
 
     // 处理文件上传
     const handleFileChange = (event: Event) => {

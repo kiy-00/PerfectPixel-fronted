@@ -160,7 +160,74 @@ export const photographerPortfolioAPI = {
     return apiClient.get(`/photographer-portfolios/photographer/${photographerId}/public`)
   },
 
-  // 更多摄影作品集API可以在这里添加
+  // 创建摄影作品集
+  create: (portfolioData: {
+    title: string
+    description: string
+    category: string
+    isPublic: boolean
+  }) => {
+    console.log('调用创建摄影作品集API:', portfolioData)
+    return apiClient.post('/photographer-portfolios', portfolioData)
+  },
+
+  // 上传作品集封面图片
+  uploadCover: (portfolioId: number, file: File) => {
+    // 创建FormData对象用于文件上传
+    const formData = new FormData()
+    formData.append('file', file)
+
+    // 注意这里需要特殊的headers配置，因为是文件上传
+    return apiClient.post(`/photographer-portfolios/${portfolioId}/cover`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    })
+  },
+
+  // 获取单个作品集详情
+  getPortfolioById: (portfolioId: number) => {
+    return apiClient.get(`/photographer-portfolios/${portfolioId}`)
+  },
+
+  // 上传摄影作品
+  uploadPhoto: (portfolioId: number, formData: FormData) => {
+    return apiClient.post(`/photographer-portfolios/${portfolioId}/photos`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    })
+  },
+
+  // 删除作品集
+  deletePortfolio: (portfolioId: number) => {
+    return apiClient.delete(`/photographer-portfolios/${portfolioId}`)
+  },
+
+  // 更新作品集信息
+  updatePortfolio: (
+    portfolioId: number,
+    portfolioData: {
+      title: string
+      description: string
+      category: string
+      isPublic: boolean
+      location?: string | null
+      shootDate?: string | null
+    },
+  ) => {
+    return apiClient.put(`/photographer-portfolios/${portfolioId}`, portfolioData)
+  },
+}
+
+// 摄影师相关API
+export const photographerAPI = {
+  // 获取单个摄影师信息
+  getPhotographerById: (photographerId: number) => {
+    return apiClient.get(`/Photographer/${photographerId}`)
+  },
+
+  // 其他摄影师相关API可以在这里添加
 }
 
 // 修图师相关API
@@ -201,16 +268,6 @@ export const retoucherAPI = {
   },
 
   // 其他修图师相关API可以在这里添加
-}
-
-// 摄影师相关API
-export const photographerAPI = {
-  // 获取单个摄影师信息
-  getPhotographerById: (photographerId: number) => {
-    return apiClient.get(`/Photographer/${photographerId}`)
-  },
-
-  // 其他摄影师相关API可以在这里添加
 }
 
 export default apiClient
