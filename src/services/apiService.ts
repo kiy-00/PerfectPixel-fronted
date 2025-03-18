@@ -162,7 +162,7 @@ export const photographerPortfolioAPI = {
 
   // 获取摄影师的私密作品集(简化版)
   getPrivatePortfolios: (photographerId: number) => {
-    return apiClient.get(`/photographer-portfolios/retoucher/${photographerId}/private-simple`)
+    return apiClient.get(`/photographer-portfolios/photographer/${photographerId}/private-simple`)
   },
 
   // 创建摄影作品集

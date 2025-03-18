@@ -221,18 +221,38 @@
             <div
               v-for="(photo, index) in filteredPhotographyPortfolio"
               :key="index"
-              class="bg-white rounded-lg shadow-md overflow-hidden h-72 group"
+              class="bg-white rounded-lg shadow-md overflow-hidden group cursor-pointer hover:shadow-lg transition-shadow"
             >
-              <div class="h-48 overflow-hidden relative">
+              <div class="aspect-video relative">
                 <img
-                  :src="photo.url"
+                  v-if="photo.coverImageUrl"
+                  :src="getImageUrl(photo.coverImageUrl)"
                   :alt="photo.title"
                   class="w-full h-full object-cover group-hover:scale-105 transition-transform"
                 />
+                <div
+                  v-else
+                  class="w-full h-full bg-neutral-dark bg-opacity-10 flex items-center justify-center"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-16 w-16 text-neutral-dark opacity-30"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
+                  </svg>
+                </div>
                 <!-- 公开/私密标识 -->
                 <div
                   :class="[
-                    'absolute top-2 left-2 px-2 py-1 text-xs rounded-md',
+                    'absolute top-2 right-2 px-2 py-1 text-xs rounded-md',
                     photo.isPublic ? 'bg-primary text-white' : 'bg-white text-neutral-dark',
                   ]"
                 >
@@ -240,44 +260,19 @@
                 </div>
               </div>
               <div class="p-3">
-                <h3 class="font-medium text-neutral-dark">{{ photo.title }}</h3>
-                <p class="text-xs text-neutral-dark">{{ photo.category }}</p>
+                <h3 class="font-medium text-neutral-dark text-lg mb-1">{{ photo.title }}</h3>
+                <p class="text-sm text-neutral-dark line-clamp-2 mb-3 h-10 overflow-hidden">
+                  {{ photo.description }}
+                </p>
 
                 <div class="flex justify-between items-center mt-2">
-                  <span class="text-xs text-neutral-dark">{{ photo.createdAt }}</span>
-                  <div class="flex space-x-2">
-                    <button class="p-1 text-neutral-dark hover:text-primary">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        class="h-4 w-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                        />
-                      </svg>
-                    </button>
-                    <button class="p-1 text-neutral-dark hover:text-error">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        class="h-4 w-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                        />
-                      </svg>
-                    </button>
+                  <span class="text-xs text-neutral-dark">{{ formatDate(photo.createdAt) }}</span>
+                  <div class="flex space-x-1">
+                    <div
+                      class="text-xs text-neutral-dark bg-neutral bg-opacity-20 px-2 py-1 rounded-full"
+                    >
+                      {{ photo.items?.length || 0 }} 作品
+                    </div>
                   </div>
                 </div>
               </div>
@@ -504,9 +499,9 @@
 import { getAssetUrl } from '../utils/urlUtils'
 import { defineComponent, ref, computed, onMounted, watch } from 'vue'
 import { useUserStore } from '../stores/userStore'
-import { retoucherPortfolioAPI } from '../services/apiService'
-import { userAPI } from '../services/apiService'
 import { useRouter } from 'vue-router'
+
+import { retoucherPortfolioAPI, userAPI, photographerPortfolioAPI } from '../services/apiService'
 
 // Interface for retoucher portfolio
 interface RetoucherPortfolio {
@@ -655,6 +650,7 @@ export default defineComponent({
     })
 
     const loadingRetoucherPortfolios = ref(false)
+    const loadingPhotographerPortfolios = ref(false)
 
     // 角色ID状态
     const retoucherId = ref<number | null>(null)
@@ -811,6 +807,75 @@ export default defineComponent({
       }
     }
 
+    // 获取摄影师的作品集
+    const fetchPhotographerPortfolios = async () => {
+      if (!photographerId.value && !userStore.photographerId) {
+        console.log('摄影师ID未设置，尝试获取...')
+        await fetchUserRoleIds()
+      }
+
+      const currentPhotographerId = photographerId.value || userStore.photographerId
+      if (!userStore.isPhotographer || !currentPhotographerId) {
+        console.error('无法获取摄影作品集: 用户不是摄影师或缺少摄影师ID')
+        if (userStore.isPhotographer) {
+          error.value = '请先完成摄影师认证，才能查看和管理摄影作品集'
+        }
+        return
+      }
+
+      loadingPhotographerPortfolios.value = true
+      error.value = ''
+
+      try {
+        console.log(`开始获取摄影师ID为${currentPhotographerId}的作品集数据`)
+
+        // 获取公开作品集
+        const publicResponse =
+          await photographerPortfolioAPI.getPublicPortfolios(currentPhotographerId)
+        console.log('公开摄影作品集数量:', publicResponse.data?.length || 0)
+
+        // 获取私密作品集
+        const privateResponse =
+          await photographerPortfolioAPI.getPrivatePortfolios(currentPhotographerId)
+        console.log('私密摄影作品集数量:', privateResponse.data?.length || 0)
+
+        const publicData = Array.isArray(publicResponse.data) ? publicResponse.data : []
+        const privateData = Array.isArray(privateResponse.data) ? privateResponse.data : []
+        const allPortfolios = JSON.parse(JSON.stringify([...publicData, ...privateData]))
+
+        console.log('合并后总摄影作品集数量:', allPortfolios.length)
+
+        allPortfolios.forEach((portfolio: any) => {
+          if (!Array.isArray(portfolio.items)) {
+            portfolio.items = []
+          }
+          portfolio.isPublic = !!portfolio.isPublic
+        })
+
+        photographyPortfolio.value = allPortfolios || []
+        console.log('成功更新摄影作品集数据')
+
+        if (allPortfolios.length === 0) {
+          console.warn('获取到的摄影作品集为空，可能需要检查API或认证信息')
+        }
+      } catch (err: any) {
+        const errorMsg = '获取摄影作品集失败'
+        console.error(errorMsg, err)
+        if (err.response) {
+          console.error('API错误状态码:', err.response.status)
+          console.error('API错误详情:', err.response.data)
+        } else if (err.request) {
+          console.error('未收到API响应:', err.request)
+        } else {
+          console.error('错误详情:', err.message)
+        }
+        error.value = `${errorMsg}，请稍后再试`
+        photographyPortfolio.value = []
+      } finally {
+        loadingPhotographerPortfolios.value = false
+      }
+    }
+
     // 获取用户信息和作品集
     const fetchPortfolio = async () => {
       loading.value = true
@@ -845,6 +910,7 @@ export default defineComponent({
         if (userStore.isPhotographer) {
           portfolioType.value = 'photography'
           console.log('用户是摄影师，设置作品类型为摄影作品')
+          await fetchPhotographerPortfolios()
         } else if (userStore.isRetoucher) {
           portfolioType.value = 'retouching'
           console.log('用户是修图师，设置作品类型为修图作品')
@@ -925,8 +991,12 @@ export default defineComponent({
           console.log('已有修图作品集数据，数量:', retoucherPortfolios.value.length)
         }
       } else if (newType === 'photography' && userStore.isPhotographer) {
-        // 这里可以添加获取摄影作品集的逻辑
-        console.log('切换到摄影作品，可以在这里添加获取摄影作品集的逻辑')
+        if (photographyPortfolio.value.length === 0) {
+          console.log('未加载摄影作品集数据，开始获取...')
+          await fetchPhotographerPortfolios()
+        } else {
+          console.log('已有摄影作品集数据，数量:', photographyPortfolio.value.length)
+        }
       }
     })
 
@@ -962,6 +1032,7 @@ export default defineComponent({
       viewPortfolioDetails,
       retoucherId, // 添加到返回值供模板使用
       photographerId, // 添加到返回值供模板使用
+      filteredPhotographyPortfolio,
     }
   },
 })
