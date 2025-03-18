@@ -160,6 +160,11 @@ export const photographerPortfolioAPI = {
     return apiClient.get(`/photographer-portfolios/photographer/${photographerId}/public`)
   },
 
+  // 获取摄影师的私密作品集(简化版)
+  getPrivatePortfolios: (photographerId: number) => {
+    return apiClient.get(`/photographer-portfolios/retoucher/${photographerId}/private-simple`)
+  },
+
   // 创建摄影作品集
   create: (portfolioData: {
     title: string

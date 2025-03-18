@@ -562,63 +562,11 @@ export default defineComponent({
     const activeTab = ref('all') // 'all', 'public', 'private'
     const portfolioType = ref('photography') // 'photography', 'retouching'
 
-    // 模拟摄影作品集数据
-    const photographyPortfolio = ref([
-      {
-        id: 1,
-        url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330',
-        title: '日系人像',
-        category: '人像摄影',
-        isPublic: true,
-        createdAt: '2023-06-15',
-      },
-      {
-        id: 2,
-        url: 'https://images.unsplash.com/photo-1554151228-14d9def656e4',
-        title: '城市街拍',
-        category: '街拍',
-        isPublic: true,
-        createdAt: '2023-07-22',
-      },
-      {
-        id: 3,
-        url: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04',
-        title: '自然光人像',
-        category: '人像摄影',
-        isPublic: false,
-        createdAt: '2023-08-10',
-      },
-      {
-        id: 4,
-        url: 'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e',
-        title: '夏日写真',
-        category: '人像摄影',
-        isPublic: false,
-        createdAt: '2023-09-05',
-      },
-    ])
+    // 摄影作品集数据
+    const photographyPortfolio = ref([])
 
-    // 模拟修图作品集数据
-    const retouchingPortfolio = ref([
-      {
-        id: 1,
-        title: '人像磨皮精修',
-        description: '专业人像精修，自然肤色和质感',
-        beforeImage: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330',
-        afterImage: 'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e',
-        isPublic: true,
-        createdAt: '2023-05-12',
-      },
-      {
-        id: 2,
-        title: '风景照片调色',
-        description: '增强色彩和对比度，突出主体',
-        beforeImage: 'https://images.unsplash.com/photo-1504257432389-52343af06ae3',
-        afterImage: 'https://images.unsplash.com/photo-1511765224389-37f0e77cf0eb',
-        isPublic: false,
-        createdAt: '2023-10-18',
-      },
-    ])
+    // 修图作品集数据
+    const retouchingPortfolio = ref([])
 
     // 根据标签筛选的摄影作品
     const filteredPhotographyPortfolio = computed(() => {
