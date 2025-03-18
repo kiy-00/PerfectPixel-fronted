@@ -137,7 +137,6 @@
             </div>
 
             <!-- 专业信息卡片 -->
-            <!-- 专业信息卡片 -->
             <div class="bg-white rounded-lg shadow-md p-6 mt-6" v-if="photographerDetails">
               <div class="flex justify-between items-center mb-4">
                 <h2 class="text-xl font-semibold text-neutral-dark">摄影师详情</h2>
@@ -174,6 +173,10 @@
                       (认证于 {{ formatDate(photographerDetails.verifiedAt) }})
                     </span>
                   </p>
+                </div>
+                <div>
+                  <h3 class="text-sm text-neutral-dark font-medium">个人简介</h3>
+                  <p class="mt-1 text-primary">{{ photographerDetails.bio || '暂无信息' }}</p>
                 </div>
                 <div>
                   <h3 class="text-sm text-neutral-dark font-medium">摄影经验</h3>
@@ -240,6 +243,10 @@
                       (认证于 {{ formatDate(retoucherDetails.verifiedAt) }})
                     </span>
                   </p>
+                </div>
+                <div>
+                  <h3 class="text-sm text-neutral-dark font-medium">个人简介</h3>
+                  <p class="mt-1 text-primary">{{ retoucherDetails.bio || '暂无信息' }}</p>
                 </div>
                 <div>
                   <h3 class="text-sm text-neutral-dark font-medium">专业领域</h3>
@@ -629,20 +636,36 @@ export default defineComponent({
       try {
         if (activeProfileType.value === 'photographer' && userStore.photographerId) {
           console.log('更新摄影师资料:', updatedData)
-          // 准备将来与后端交互的代码
-          // await apiClient.put(`/Photographer/${userStore.photographerId}`, updatedData)
+
+          // 调用API更新摄影师信息
+          await apiClient.put(`/Photographer/${userStore.photographerId}`, {
+            bio: updatedData.bio,
+            experience: updatedData.experience,
+            equipmentInfo: updatedData.equipmentInfo,
+            location: updatedData.location,
+            priceRangeMin: updatedData.priceRangeMin,
+            priceRangeMax: updatedData.priceRangeMax,
+          })
+
           // 更新本地数据
           photographerDetails.value = { ...photographerDetails.value, ...updatedData }
         } else if (activeProfileType.value === 'retoucher' && userStore.retoucherId) {
           console.log('更新修图师资料:', updatedData)
-          // 准备将来与后端交互的代码
-          // await apiClient.put(`/Retoucher/${userStore.retoucherId}`, updatedData)
+
+          // 调用API更新修图师信息
+          await apiClient.put(`/Retoucher/${userStore.retoucherId}`, {
+            bio: updatedData.bio,
+            expertise: updatedData.expertise,
+            software: updatedData.software,
+            pricePerPhoto: updatedData.pricePerPhoto,
+          })
+
           // 更新本地数据
           retoucherDetails.value = { ...retoucherDetails.value, ...updatedData }
         }
       } catch (error) {
         console.error('更新专业资料失败:', error)
-        // TODO: 显示错误消息
+        alert('更新专业资料失败，请稍后重试')
       }
     }
 

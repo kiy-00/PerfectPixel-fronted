@@ -24,6 +24,15 @@
                   <div v-if="profileType === 'photographer'" class="space-y-4">
                     <div class="grid grid-cols-1 gap-4">
                       <div>
+                        <label class="block text-sm font-medium text-gray-700">个人简介</label>
+                        <textarea
+                          v-model="formData.bio"
+                          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50"
+                          rows="2"
+                        ></textarea>
+                      </div>
+
+                      <div>
                         <label class="block text-sm font-medium text-gray-700">摄影经验</label>
                         <textarea
                           v-model="formData.experience"
@@ -78,6 +87,15 @@
                   <!-- 修图师表单 -->
                   <div v-else-if="profileType === 'retoucher'" class="space-y-4">
                     <div class="grid grid-cols-1 gap-4">
+                      <div>
+                        <label class="block text-sm font-medium text-gray-700">个人简介</label>
+                        <textarea
+                          v-model="formData.bio"
+                          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50"
+                          rows="2"
+                        ></textarea>
+                      </div>
+
                       <div>
                         <label class="block text-sm font-medium text-gray-700">专业领域</label>
                         <textarea
