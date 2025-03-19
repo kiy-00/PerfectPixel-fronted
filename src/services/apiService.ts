@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { isTemplateExpression } from 'typescript'
 
 // Use environment variable for API base URL
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
@@ -197,7 +198,7 @@ export const photographerPortfolioAPI = {
 
   // 上传摄影作品
   uploadPhoto: (portfolioId: number, formData: FormData) => {
-    return apiClient.post(`/photographer-portfolios/${portfolioId}/photos`, formData, {
+    return apiClient.post(`/photographer-portfolios/${portfolioId}/items/batch`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -207,6 +208,10 @@ export const photographerPortfolioAPI = {
   // 删除作品集
   deletePortfolio: (portfolioId: number) => {
     return apiClient.delete(`/photographer-portfolios/${portfolioId}`)
+  },
+
+  deletePortfolioItem: (itemId: number) => {
+    return apiClient.delete(`/photographer-portfolios/items/${itemId}`)
   },
 
   // 更新作品集信息

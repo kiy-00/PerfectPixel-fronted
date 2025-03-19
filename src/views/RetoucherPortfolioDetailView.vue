@@ -175,7 +175,28 @@
               </div>
 
               <div v-if="portfolio.retoucherId === userStore.retoucherId" class="mt-6">
-                <!-- Removed the first "添加新作品" button -->
+                <button
+                  @click="showUploadModal = true"
+                  class="px-4 py-2 border border-primary text-primary rounded-md hover:bg-green-light hover:bg-opacity-10 transition-colors mr-2"
+                >
+                  <span class="flex items-center">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="h-4 w-4 mr-1"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                      />
+                    </svg>
+                    添加新作品
+                  </span>
+                </button>
                 <!-- 修改"更多操作"按钮为下拉菜单 -->
                 <div class="relative inline-block">
                   <button
@@ -330,6 +351,27 @@
                   添加新作品
                 </span>
               </button>
+              <button
+                class="px-4 py-2 border border-primary text-primary rounded-md hover:bg-green-light hover:bg-opacity-10 transition-colors"
+              >
+                <span class="flex items-center">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-4 w-4 mr-1"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                    />
+                  </svg>
+                  编辑作品集
+                </span>
+              </button>
             </div>
           </div>
           <div v-else-if="isDevelopment" class="p-4 border-t border-red-300 bg-red-50">
@@ -356,7 +398,7 @@
               作品列表 ({{ formattedPortfolioItems.length || 0 }})
             </h2>
             <!-- 添加悬浮的上传按钮 -->
-            <!-- <button
+            <button
               v-if="
                 Number(portfolio.retoucherId) === Number(userStore.retoucherId) || forceOwnership
               "
@@ -364,7 +406,7 @@
               class="px-4 py-2 bg-primary text-white rounded-md hover:bg-green-dark transition-colors"
             >
               添加新作品
-            </button> -->
+            </button>
           </div>
 
           <!-- 空状态 -->

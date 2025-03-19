@@ -419,12 +419,11 @@
                 />
               </div>
 
-              <!-- 图片信息覆盖层 -->
+              <!-- 图片信息覆盖层 - 移除标题，只保留描述 -->
               <div
                 class="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3"
               >
-                <h3 class="font-medium text-white truncate">{{ item.title || '无标题' }}</h3>
-                <p class="text-xs text-white/80 line-clamp-2 mt-1">
+                <p class="text-sm text-white/90 line-clamp-2">
                   {{ item.description || '无描述' }}
                 </p>
               </div>
@@ -437,23 +436,16 @@
                 封面
               </div>
 
-              <!-- 照片操作按钮（仅所有者可见） -->
-              <div
-                v-if="
-                  Number(portfolio.photographerId) === Number(userStore.photographerId) ||
-                  forceOwnership
-                "
-                class="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity"
-              >
+              <!-- 作品项删除按钮 -->
+              <div v-if="isOwnPortfolio" class="absolute bottom-2 right-2">
                 <button
-                  class="bg-white bg-opacity-80 p-1 rounded-full hover:bg-opacity-100 transition-colors"
-                  @click.stop="setAsCover(item)"
-                  :title="item.isPortfolioCover ? '当前封面' : '设为封面'"
+                  @click.stop="deletePortfolioItem(item)"
+                  class="bg-red-500 text-white rounded-full p-1 hover:bg-red-600 focus:outline-none"
+                  title="删除作品项"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     class="h-4 w-4"
-                    :class="item.isPortfolioCover ? 'text-primary' : 'text-neutral-dark'"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -462,7 +454,7 @@
                       stroke-linecap="round"
                       stroke-linejoin="round"
                       stroke-width="2"
-                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14"
+                      d="M6 18L18 6M6 6l12 12"
                     />
                   </svg>
                 </button>
@@ -501,7 +493,7 @@
           </div>
 
           <!-- 上传表单 -->
-          <form @submit.prevent="uploadPhotographyImage">
+          <form @submit.prevent="uploadPhotographyImages">
             <!-- 错误提示 -->
             <div v-if="uploadError" class="mb-4 p-3 bg-error bg-opacity-10 text-error rounded-md">
               {{ uploadError }}
@@ -513,17 +505,35 @@
                 照片 <span class="text-error">*</span>
               </label>
               <div class="border-2 border-dashed border-neutral rounded-md p-4 text-center">
-                <div v-if="imagePreview" class="mb-2">
-                  <img :src="imagePreview" class="max-h-40 mx-auto" alt="图片预览" />
-                  <button
-                    type="button"
-                    @click="removeImage"
-                    class="mt-2 text-error text-sm hover:underline"
-                  >
-                    移除
-                  </button>
+                <!-- 显示多个图片预览 -->
+                <div v-if="selectedFiles.length > 0" class="grid grid-cols-2 gap-2 mb-2">
+                  <div v-for="(file, index) in selectedFiles" :key="index" class="relative">
+                    <img
+                      :src="filePreviewUrls[index]"
+                      class="max-h-40 mx-auto object-cover"
+                      :alt="`预览 ${index + 1}`"
+                    />
+                    <button
+                      type="button"
+                      @click="removeFile(index)"
+                      class="absolute top-0 right-0 bg-error text-white rounded-full p-1"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-4 w-4"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path
+                          fill-rule="evenodd"
+                          d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                          clip-rule="evenodd"
+                        />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
-                <label v-else class="cursor-pointer flex flex-col items-center justify-center py-4">
+                <label class="cursor-pointer flex flex-col items-center justify-center py-4">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     class="h-10 w-10 text-neutral-dark opacity-50 mb-2"
@@ -538,59 +548,49 @@
                       d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
                     />
                   </svg>
-                  <span class="text-neutral-dark">点击选择照片</span>
+                  <span class="text-neutral-dark">点击选择照片（可多选）</span>
                   <input
                     type="file"
                     ref="imageInput"
-                    @change="handleImageChange"
+                    @change="handleImagesChange"
                     accept="image/*"
                     class="hidden"
+                    multiple
                     required
                   />
                 </label>
+                <div v-if="selectedFiles.length > 0" class="mt-2 text-sm text-primary">
+                  已选择 {{ selectedFiles.length }} 张照片
+                </div>
               </div>
             </div>
 
-            <!-- 标题 -->
+            <!-- 公共标题 (所有图片) -->
             <div class="mb-4">
               <label for="title" class="block text-sm font-medium text-neutral-dark mb-1">
-                作品标题
+                公共标题 (可选)
               </label>
               <input
                 type="text"
                 id="title"
                 v-model="uploadForm.title"
                 class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
-                placeholder="输入作品标题"
+                placeholder="输入作品标题（将应用于所有图片）"
               />
             </div>
 
-            <!-- 描述 -->
+            <!-- 公共描述 (所有图片) -->
             <div class="mb-4">
               <label for="description" class="block text-sm font-medium text-neutral-dark mb-1">
-                作品描述
+                公共描述 (可选)
               </label>
               <textarea
                 id="description"
                 v-model="uploadForm.description"
                 class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
                 rows="3"
-                placeholder="描述拍摄过程或特点..."
+                placeholder="描述拍摄过程或特点（将应用于所有图片）"
               ></textarea>
-            </div>
-
-            <!-- 元数据（可选） -->
-            <div class="mb-4">
-              <label for="metadata" class="block text-sm font-medium text-neutral-dark mb-1">
-                元数据 <span class="text-neutral-dark">(可选)</span>
-              </label>
-              <input
-                type="text"
-                id="metadata"
-                v-model="uploadForm.metadata"
-                class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
-                placeholder="例如：相机参数，光圈，快门速度等"
-              />
             </div>
 
             <!-- 按钮区域 -->
@@ -605,9 +605,9 @@
               <button
                 type="submit"
                 class="px-4 py-2 bg-primary text-white rounded-md hover:bg-green-dark"
-                :disabled="isUploading || !uploadForm.image"
+                :disabled="isUploading || selectedFiles.length === 0"
               >
-                <span v-if="isUploading">上传中...</span>
+                <span v-if="isUploading">上传中... ({{ uploadProgressText }})</span>
                 <span v-else>上传作品</span>
               </button>
             </div>
@@ -954,9 +954,9 @@
     >
       <div class="bg-white rounded-lg w-full max-w-4xl max-h-full overflow-hidden flex flex-col">
         <div class="flex justify-between items-center p-4 border-b">
-          <h3 class="font-semibold text-lg text-neutral-dark">
+          <!-- <h3 class="font-semibold text-lg text-neutral-dark">
             {{ selectedPhoto.title || '照片详情' }}
-          </h3>
+          </h3> -->
           <button @click="closePhotoModal" class="text-neutral-dark hover:text-error">
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -984,7 +984,7 @@
               />
             </div>
             <div class="md:w-1/3">
-              <h4 class="font-medium text-neutral-dark">{{ selectedPhoto.title || '无标题' }}</h4>
+              <!-- <h4 class="font-medium text-neutral-dark">{{ selectedPhoto.title || '无标题' }}</h4>
               <p class="mt-2 text-neutral-dark">{{ selectedPhoto.description || '无描述' }}</p>
 
               <div class="mt-4 pt-4 border-t">
@@ -995,31 +995,11 @@
                   <span class="font-medium">上传时间:</span>
                   {{ formatDate(selectedPhoto.createdAt) }}
                 </p>
-              </div>
+              </div> -->
 
-              <!-- 照片操作按钮 -->
+              <!-- 照片操作按钮 - 只显示删除按钮 -->
               <div v-if="isOwnPortfolio" class="mt-6 space-y-2">
-                <button
-                  @click="setAsCover(selectedPhoto)"
-                  class="w-full px-4 py-2 border border-primary text-primary rounded-md hover:bg-green-light hover:bg-opacity-10 transition-colors flex items-center justify-center"
-                  :disabled="selectedPhoto.isPortfolioCover"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    class="h-4 w-4 mr-2"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14"
-                    />
-                  </svg>
-                  {{ selectedPhoto.isPortfolioCover ? '当前封面' : '设为封面' }}
-                </button>
+                <!-- 移除"设为封面"按钮 -->
                 <button
                   @click="deletePhoto(selectedPhoto)"
                   class="w-full px-4 py-2 border border-error text-error rounded-md hover:bg-error hover:bg-opacity-10 transition-colors flex items-center justify-center"
@@ -1080,12 +1060,15 @@ export default defineComponent({
     const showUploadModal = ref(false)
     const isUploading = ref(false)
     const uploadError = ref('')
-    const imagePreview = ref('')
     const imageInput = ref<HTMLInputElement | null>(null)
+
+    // 新增变量用于多图片上传
+    const selectedFiles = ref<File[]>([])
+    const filePreviewUrls = ref<string[]>([])
+    const uploadProgressText = ref('')
 
     // 上传表单数据
     const uploadForm = ref({
-      image: null as File | null,
       title: '',
       description: '',
       metadata: '',
@@ -1220,59 +1203,70 @@ export default defineComponent({
     // 重置上传表单
     const resetUploadForm = () => {
       uploadForm.value = {
-        image: null,
         title: '',
         description: '',
         metadata: '',
       }
-      imagePreview.value = ''
+      // 清除所有选择的文件和预览
+      selectedFiles.value = []
+      filePreviewUrls.value = []
       uploadError.value = ''
+      uploadProgressText.value = ''
     }
 
-    // 处理图片选择
-    const handleImageChange = (event: Event) => {
+    // 处理多图片选择
+    const handleImagesChange = (event: Event) => {
       const input = event.target as HTMLInputElement
-      if (input.files && input.files[0]) {
-        const file = input.files[0]
-        uploadForm.value.image = file
+      if (input.files && input.files.length > 0) {
+        // 将FileList转换为数组
+        const newFiles = Array.from(input.files)
 
-        // 创建预览
-        const reader = new FileReader()
-        reader.onload = (e) => {
-          imagePreview.value = e.target?.result as string
-        }
-        reader.readAsDataURL(file)
+        // 为每个文件创建预览URL
+        newFiles.forEach((file) => {
+          selectedFiles.value.push(file)
+
+          const reader = new FileReader()
+          reader.onload = (e) => {
+            filePreviewUrls.value.push(e.target?.result as string)
+          }
+          reader.readAsDataURL(file)
+        })
       }
     }
 
-    // 移除图片
-    const removeImage = () => {
-      uploadForm.value.image = null
-      imagePreview.value = ''
-      if (imageInput.value) {
+    // 移除单个文件
+    const removeFile = (index: number) => {
+      selectedFiles.value.splice(index, 1)
+      filePreviewUrls.value.splice(index, 1)
+
+      // 如果移除后没有文件了，清空input
+      if (selectedFiles.value.length === 0 && imageInput.value) {
         imageInput.value.value = ''
       }
     }
 
-    // 上传图片
-    const uploadPhotographyImage = async () => {
+    // 批量上传图片
+    const uploadPhotographyImages = async () => {
       if (!portfolio.value) return
 
       // 验证必须有图片
-      if (!uploadForm.value.image) {
-        uploadError.value = '请选择要上传的照片'
+      if (selectedFiles.value.length === 0) {
+        uploadError.value = '请至少选择一张照片'
         return
       }
 
       try {
         isUploading.value = true
         uploadError.value = ''
+        uploadProgressText.value = '准备中...'
 
         const portfolioId = portfolio.value.portfolioId
         const formData = new FormData()
 
-        // 添加图片（必选）
-        formData.append('image', uploadForm.value.image)
+        // 添加所有选择的图片
+        selectedFiles.value.forEach((file, index) => {
+          formData.append('files', file)
+        })
 
         // 添加标题和描述（可选）
         if (uploadForm.value.title) {
@@ -1287,11 +1281,12 @@ export default defineComponent({
           formData.append('metadata', uploadForm.value.metadata)
         }
 
-        console.log(`准备上传照片到作品集 #${portfolioId}`)
+        console.log(`准备批量上传 ${selectedFiles.value.length} 张照片到作品集 #${portfolioId}`)
+        uploadProgressText.value = `上传中 (0/${selectedFiles.value.length})`
 
-        // 发送API请求
-        await photographerPortfolioAPI.uploadImage(portfolioId, formData)
-        console.log('上传成功')
+        // 发送API请求 - 使用批量上传端点
+        const response = await photographerPortfolioAPI.uploadPhoto(portfolioId, formData)
+        console.log('批量上传成功:', response.data)
 
         // 关闭模态框
         closeUploadModal()
@@ -1312,6 +1307,7 @@ export default defineComponent({
         }
       } finally {
         isUploading.value = false
+        uploadProgressText.value = ''
       }
     }
 
@@ -1585,6 +1581,20 @@ export default defineComponent({
       showMoreOptions.value = false
     }
 
+    // 删除作品项的函数
+    const deletePortfolioItem = async (item: any) => {
+      if (!confirm('确定要删除该作品项吗？此操作不可撤销。')) return
+      try {
+        console.log(`删除作品项：${item.itemId}`)
+        await photographerPortfolioAPI.deletePortfolioItem(item.itemId)
+        alert('作品项删除成功')
+        await fetchPortfolioDetails()
+      } catch (err: any) {
+        console.error('删除作品项失败:', err)
+        alert('删除作品项失败，请稍后再试')
+      }
+    }
+
     // 点击外部关闭下拉菜单
     onMounted(() => {
       document.addEventListener('click', (event) => {
@@ -1658,13 +1668,15 @@ export default defineComponent({
       showUploadModal,
       isUploading,
       uploadError,
-      imagePreview,
       imageInput,
       uploadForm,
       closeUploadModal,
-      handleImageChange,
-      removeImage,
-      uploadPhotographyImage,
+      uploadPhotographyImages, // 更新为批量上传函数
+      selectedFiles, // 新增
+      filePreviewUrls, // 新增
+      handleImagesChange, // 新增
+      removeFile, // 新增
+      uploadProgressText, // 新增
       // 下拉菜单相关
       showMoreOptions,
       // 封面上传相关
@@ -1703,6 +1715,7 @@ export default defineComponent({
       isOwnPortfolio,
       setAsCover,
       deletePhoto,
+      deletePortfolioItem, // added delete method
     }
   },
 })
