@@ -357,32 +357,36 @@
                   <h2 class="text-xl font-semibold text-neutral-dark">摄影作品集</h2>
                 </div>
 
-                <!-- 摄影作品网格 -->
-                <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8">
+                <!-- 摄影作品集列表 -->
+                <div class="mb-8">
                   <div
-                    v-for="(photo, index) in photographyPortfolios"
-                    :key="index"
-                    class="group relative overflow-hidden rounded-lg aspect-square"
+                    v-for="(portfolio, index) in photographerPortfolioGroups"
+                    :key="portfolio.id"
+                    class="mb-8"
                   >
-                    <img
-                      :src="photo.imageUrl"
-                      :alt="photo.title"
-                      class="w-full h-full object-cover transition-transform group-hover:scale-105"
-                    />
-                    <div
-                      class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4"
-                    >
-                      <div class="text-white">
-                        <h3 class="font-medium">{{ photo.title }}</h3>
-                        <p class="text-sm text-green-light">{{ photo.category }}</p>
+                    <h3 class="text-lg font-semibold text-primary mb-3">{{ portfolio.title }}</h3>
+                    <p class="text-sm text-neutral-dark mb-4">{{ portfolio.description }}</p>
+
+                    <!-- 摄影作品网格 -->
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                      <div
+                        v-for="(photo, photoIndex) in portfolio.items"
+                        :key="photoIndex"
+                        class="aspect-square overflow-hidden rounded-lg"
+                      >
+                        <img
+                          :src="photo.imageUrl"
+                          :alt="portfolio.title"
+                          class="w-full h-full object-cover hover:scale-105 transition-transform"
+                        />
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <!-- 无摄影作品状态 -->
-                <div v-if="photographyPortfolios.length === 0" class="text-center py-10">
-                  <p class="text-neutral-dark">该用户暂无公开摄影作品</p>
+                <!-- 无作品集状态 -->
+                <div v-if="photographerPortfolioGroups.length === 0" class="text-center py-10">
+                  <p class="text-neutral-dark">该用户暂无公开摄影作品集</p>
                 </div>
               </div>
             </div>
@@ -459,50 +463,10 @@ export default defineComponent({
     const retoucherPortfolios = ref([])
 
     // 摄影作品集数据
-    const photographyPortfolios = ref([
-      {
-        id: 301,
-        title: '城市掠影',
-        category: '风景摄影',
-        imageUrl:
-          'https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?w=500&h=500&fit=crop',
-      },
-      {
-        id: 302,
-        title: '日系写真',
-        category: '人像摄影',
-        imageUrl:
-          'https://images.unsplash.com/photo-1504257432389-52343af06ae3?w=500&h=500&fit=crop',
-      },
-      {
-        id: 303,
-        title: '街头印象',
-        category: '街拍',
-        imageUrl:
-          'https://images.unsplash.com/photo-1511765224389-37f0e77cf0eb?w=500&h=500&fit=crop',
-      },
-      {
-        id: 304,
-        title: '秋日光影',
-        category: '风景摄影',
-        imageUrl:
-          'https://images.unsplash.com/photo-1476611550463-8c34582b4d90?w=500&h=500&fit=crop',
-      },
-      {
-        id: 305,
-        title: '都市剪影',
-        category: '建筑摄影',
-        imageUrl:
-          'https://images.unsplash.com/photo-1533582437341-8b0cd28b3af7?w=500&h=500&fit=crop',
-      },
-      {
-        id: 306,
-        title: '人间烟火',
-        category: '纪实摄影',
-        imageUrl:
-          'https://images.unsplash.com/photo-1465572089651-8fde36c892dd?w=500&h=500&fit=crop',
-      },
-    ])
+    const photographyPortfolios = ref([])
+
+    // 在setup中添加新的ref
+    const photographerPortfolioGroups = ref([])
 
     // 获取用户资料的函数
     const fetchUserProfile = async () => {
@@ -666,12 +630,47 @@ export default defineComponent({
     // 获取摄影作品集
     const fetchPhotographyPortfolios = async (photographerId: number) => {
       try {
+        console.log('获取摄影师作品集, photographerId:', photographerId)
         const response = await photographerPortfolioAPI.getPublicPortfolios(photographerId)
+        console.log('摄影师作品集API响应:', response.data)
 
-        // 这里需要对作品集数据进行处理，格式化为前端需要的结构
-        // photographyPortfolios.value = ...处理逻辑...
+        // 处理API返回的数据
+        if (response.data && Array.isArray(response.data)) {
+          // 创建图片URL的辅助函数，处理相对路径
+          const createFullImageUrl = (imageUrl: string) => {
+            if (!imageUrl) return ''
+            if (imageUrl.startsWith('http')) return imageUrl
+
+            // 使用环境变量中配置的静态资源URL
+            const staticAssetsUrl = import.meta.env.VITE_STATIC_ASSETS_URL || ''
+            return `${staticAssetsUrl}${imageUrl}`
+          }
+
+          // 按照作品集分组，保持作品集的组织结构
+          photographerPortfolioGroups.value = response.data.map((portfolio) => {
+            // 过滤掉封面图片，只保留实际作品图片
+            const items = portfolio.items
+              .filter((item) => !item.isPortfolioCover)
+              .map((item) => ({
+                id: item.itemId,
+                imageUrl: createFullImageUrl(item.imageUrl),
+                thumbnailUrl: createFullImageUrl(item.thumbnailUrl),
+              }))
+
+            return {
+              id: portfolio.portfolioId,
+              title: portfolio.title,
+              description: portfolio.description || '',
+              category: portfolio.category,
+              coverImage: createFullImageUrl(portfolio.coverImageUrl),
+              items: items,
+            }
+          })
+
+          console.log('处理后的摄影作品集数据:', photographerPortfolioGroups.value)
+        }
       } catch (err) {
-        console.error('获取摄影作品集失败:', err)
+        console.error('获取摄影师作品集失败:', err)
       }
     }
 
@@ -802,6 +801,7 @@ export default defineComponent({
       activePortfolioTab,
       retoucherPortfolios,
       photographyPortfolios,
+      photographerPortfolioGroups,
       formatDate,
       getExperienceText,
       createRetouchOrder,
