@@ -197,7 +197,8 @@
         <div v-else-if="portfolioType === 'photography' && userStore.isPhotographer">
           <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             <!-- 添加新作品的卡片 -->
-            <div
+            <router-link
+              to="/portfolio/photographer/create"
               class="bg-white rounded-lg shadow-md overflow-hidden h-72 flex flex-col items-center justify-center border-2 border-dashed border-green-light cursor-pointer hover:bg-green-light hover:bg-opacity-10"
             >
               <svg
@@ -215,7 +216,7 @@
                 />
               </svg>
               <span class="text-primary font-medium">添加新作品</span>
-            </div>
+            </router-link>
 
             <!-- 作品卡片 -->
             <div
