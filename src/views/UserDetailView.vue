@@ -192,22 +192,10 @@
             <!-- 价格信息卡片 -->
             <div v-if="user.isRetoucher" class="bg-white rounded-lg shadow-md p-6 mb-6">
               <h2 class="text-xl font-semibold text-neutral-dark mb-4">修图价格</h2>
-              <div class="flex justify-between items-center py-3 border-b border-neutral">
-                <span class="text-neutral-dark">基础修图</span>
+              <div class="flex justify-between items-center py-3">
+                <span class="text-neutral-dark">修图价格</span>
                 <span class="font-semibold text-primary"
                   >¥{{ user.retoucherInfo.pricePerPhoto }} / 张</span
-                >
-              </div>
-              <div class="flex justify-between items-center py-3 border-b border-neutral">
-                <span class="text-neutral-dark">高级精修</span>
-                <span class="font-semibold text-primary"
-                  >¥{{ user.retoucherInfo.pricePerPhoto * 2 }} / 张</span
-                >
-              </div>
-              <div class="flex justify-between items-center py-3">
-                <span class="text-neutral-dark">创意修图</span>
-                <span class="font-semibold text-primary"
-                  >¥{{ user.retoucherInfo.pricePerPhoto * 3 }} / 张</span
                 >
               </div>
               <button
@@ -221,23 +209,13 @@
             <!-- 摄影价格信息 -->
             <div v-if="user.isPhotographer" class="bg-white rounded-lg shadow-md p-6">
               <h2 class="text-xl font-semibold text-neutral-dark mb-4">拍摄价格</h2>
-              <div class="flex justify-between items-center py-3 border-b border-neutral">
-                <span class="text-neutral-dark">普通套餐</span>
-                <span class="font-semibold text-primary"
-                  >¥{{ user.photographerInfo.pricePerHour }} / 小时</span
-                >
-              </div>
-              <div class="flex justify-between items-center py-3 border-b border-neutral">
-                <span class="text-neutral-dark">精品套餐</span>
-                <span class="font-semibold text-primary"
-                  >¥{{ user.photographerInfo.pricePerHour * 1.5 }} / 小时</span
-                >
-              </div>
               <div class="flex justify-between items-center py-3">
-                <span class="text-neutral-dark">商业套餐</span>
-                <span class="font-semibold text-primary"
-                  >¥{{ user.photographerInfo.pricePerHour * 2 }} / 小时</span
-                >
+                <span class="text-neutral-dark">价格区间</span>
+                <span class="font-semibold text-primary">
+                  ¥{{ user.photographerInfo.priceRangeMin }} - ¥{{
+                    user.photographerInfo.priceRangeMax
+                  }}
+                </span>
               </div>
               <button
                 @click="createPhotoshootOrder"
@@ -455,7 +433,8 @@ export default defineComponent({
         experience: '',
         equipment: '',
         bio: '',
-        pricePerHour: 0,
+        priceRangeMin: 0,
+        priceRangeMax: 0,
       },
     })
 
@@ -566,7 +545,8 @@ export default defineComponent({
           experience: getExperienceLevel(photographerData.experience || 0),
           equipment: photographerData.equipment,
           bio: photographerData.bio,
-          pricePerHour: photographerData.hourlyRate || 0,
+          priceRangeMin: photographerData.priceRangeMin || 0,
+          priceRangeMax: photographerData.priceRangeMax || 0,
         }
 
         // 获取摄影作品集
