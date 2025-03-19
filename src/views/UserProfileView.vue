@@ -321,23 +321,37 @@
                     class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
                   >
                     <div
-                      v-for="(photo, index) in photographyPortfolio"
-                      :key="index"
+                      v-for="portfolio in photographyPortfolio.slice(0, 3)"
+                      :key="portfolio.portfolioId"
                       class="group relative overflow-hidden rounded-lg aspect-square"
                     >
                       <img
-                        :src="photo.url"
-                        :alt="photo.title"
+                        :src="portfolio.coverImageUrl"
+                        :alt="portfolio.title"
                         class="w-full h-full object-cover transition-transform group-hover:scale-105"
                       />
                       <div
                         class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4"
                       >
                         <div class="text-white">
-                          <h3 class="font-medium">{{ photo.title }}</h3>
-                          <p class="text-sm text-green-light">{{ photo.category }}</p>
+                          <h3 class="font-medium">{{ portfolio.title }}</h3>
+                          <p class="text-sm text-green-light">{{ portfolio.category }}</p>
                         </div>
                       </div>
+                    </div>
+                    <!-- 如果作品集不足三个，添加占位元素 -->
+                    <div
+                      v-for="i in Math.max(0, 3 - photographyPortfolio.length)"
+                      :key="`placeholder-${i}`"
+                      class="bg-neutral bg-opacity-20 rounded-lg aspect-square flex items-center justify-center"
+                    >
+                      <router-link
+                        to="/portfolio/photographer/create"
+                        class="text-neutral-dark text-center"
+                      >
+                        <div class="text-3xl mb-2">+</div>
+                        <div>添加更多作品集</div>
+                      </router-link>
                     </div>
                   </div>
 
@@ -465,7 +479,7 @@
 <script lang="ts">
 import { defineComponent, ref, computed, onMounted } from 'vue'
 import { useUserStore } from '../stores/userStore'
-import { retoucherPortfolioAPI } from '../services/apiService.ts' // 确保路径正确
+import { retoucherPortfolioAPI, photographerPortfolioAPI } from '../services/apiService.ts' // 确保路径正确
 import apiClient from '../services/apiService.ts' // 确保路径正确
 import ProfessionalProfileModal from '../components/ProfessionalProfileModal.vue' // 确保路径正确
 
@@ -673,6 +687,29 @@ export default defineComponent({
       }
     }
 
+    // 添加获取摄影师作品集的方法
+    const fetchPublicPhotographerPortfolios = async () => {
+      if (isPhotographer.value && userStore.photographerId) {
+        try {
+          const response = await photographerPortfolioAPI.getPublicPortfolios(
+            userStore.photographerId,
+          )
+          photographyPortfolio.value = response.data.map((portfolio) => {
+            const baseUrl = import.meta.env.VITE_STATIC_ASSETS_URL || ''
+            const cover = portfolio.coverImageUrl.startsWith('http')
+              ? portfolio.coverImageUrl
+              : `${baseUrl}${portfolio.coverImageUrl}`
+            return {
+              ...portfolio,
+              coverImageUrl: cover,
+            }
+          })
+        } catch (error) {
+          console.error('Fetch photographer portfolios failed:', error)
+        }
+      }
+    }
+
     // 在组件挂载时获取用户资料
     onMounted(async () => {
       loading.value = true
@@ -700,6 +737,11 @@ export default defineComponent({
       if (isRetoucher.value && userStore.retoucherId) {
         await fetchRetoucherDetails()
       }
+
+      // 如果用户是摄影师，获取摄影师作品集
+      if (isPhotographer.value && userStore.photographerId) {
+        await fetchPublicPhotographerPortfolios()
+      }
     })
 
     return {
@@ -724,6 +766,7 @@ export default defineComponent({
       openRetoucherModal,
       closeProfileModal,
       saveProfileChanges,
+      fetchPublicPhotographerPortfolios,
     }
   },
 })
