@@ -1,478 +1,488 @@
 <template>
-  <div class="bg-neutral min-h-screen pb-10">
-    <!-- 加载中状态 -->
-    <div v-if="loading" class="flex justify-center items-center h-screen">
-      <div class="text-center">
-        <div
-          class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"
-        ></div>
-        <p class="mt-4 text-neutral-dark">正在加载用户资料...</p>
+  <div class="flex min-h-screen bg-neutral">
+    <!-- 侧边栏 -->
+    <SideBar class="hidden md:block" />
+
+    <!-- 主内容区 -->
+    <div class="flex-1">
+      <!-- 加载中状态 -->
+      <div v-if="loading" class="flex justify-center items-center h-screen">
+        <div class="text-center">
+          <div
+            class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"
+          ></div>
+          <p class="mt-4 text-neutral-dark">正在加载用户资料...</p>
+        </div>
       </div>
-    </div>
 
-    <!-- 错误提示 -->
-    <div v-else-if="error" class="flex justify-center items-center h-screen">
-      <div class="text-center bg-white p-8 rounded-lg shadow-md">
-        <div class="text-error text-xl mb-4">加载失败</div>
-        <p class="text-neutral-dark mb-6">{{ error }}</p>
-        <button @click="fetchUserProfile" class="px-4 py-2 bg-primary text-white rounded-md">
-          重试
-        </button>
+      <!-- 错误提示 -->
+      <div v-else-if="error" class="flex justify-center items-center h-screen">
+        <div class="text-center bg-white p-8 rounded-lg shadow-md">
+          <div class="text-error text-xl mb-4">加载失败</div>
+          <p class="text-neutral-dark mb-6">{{ error }}</p>
+          <button @click="fetchUserProfile" class="px-4 py-2 bg-primary text-white rounded-md">
+            重试
+          </button>
+        </div>
       </div>
-    </div>
 
-    <!-- 个人资料内容 -->
-    <template v-else>
-      <!-- 个人资料头部 -->
-      <div class="bg-primary text-white p-6 shadow-md">
-        <div class="container mx-auto">
-          <div class="flex flex-col md:flex-row items-center md:items-start">
-            <!-- 用户头像 -->
-            <div
-              class="h-24 w-24 rounded-full border-4 border-white bg-green-dark text-white flex items-center justify-center text-4xl font-bold mr-6"
-            >
-              {{ userStore.userInitial }}
-            </div>
+      <!-- 个人资料内容 -->
+      <template v-else>
+        <!-- 个人资料头部 -->
+        <div class="bg-primary text-white p-6 shadow-md">
+          <div class="container mx-auto">
+            <div class="flex flex-col md:flex-row items-center md:items-start">
+              <!-- 用户头像 -->
+              <div
+                class="h-24 w-24 rounded-full border-4 border-white bg-green-dark text-white flex items-center justify-center text-4xl font-bold mr-6"
+              >
+                {{ userStore.userInitial }}
+              </div>
 
-            <!-- 用户基本信息 -->
-            <div class="mt-4 md:mt-0 text-center md:text-left">
-              <h1 class="text-3xl font-bold">{{ userStore.userInfo?.username }}</h1>
-              <p class="text-green-light mt-1">{{ userStore.formattedRoles }}</p>
-              <p class="text-green-light text-sm mt-1">
-                <span class="mr-4">注册于 {{ formatDate(userStore.userInfo?.createdAt) }}</span>
-                <span>上次登录 {{ formatDate(userStore.userInfo?.lastLogin) }}</span>
-              </p>
+              <!-- 用户基本信息 -->
+              <div class="mt-4 md:mt-0 text-center md:text-left">
+                <h1 class="text-3xl font-bold">{{ userStore.userInfo?.username }}</h1>
+                <p class="text-green-light mt-1">{{ userStore.formattedRoles }}</p>
+                <p class="text-green-light text-sm mt-1">
+                  <span class="mr-4">注册于 {{ formatDate(userStore.userInfo?.createdAt) }}</span>
+                  <span>上次登录 {{ formatDate(userStore.userInfo?.lastLogin) }}</span>
+                </p>
 
-              <div class="mt-4 flex items-center justify-center md:justify-start space-x-4">
-                <button
-                  class="bg-white text-primary px-4 py-2 rounded-md font-medium hover:bg-green-light transition-colors"
-                >
-                  编辑资料
-                </button>
-                <button
-                  class="bg-transparent border border-white text-white px-4 py-2 rounded-md font-medium hover:bg-green-dark transition-colors"
-                >
-                  联系我
-                </button>
+                <div class="mt-4 flex items-center justify-center md:justify-start space-x-4">
+                  <button
+                    class="bg-white text-primary px-4 py-2 rounded-md font-medium hover:bg-green-light transition-colors"
+                  >
+                    编辑资料
+                  </button>
+                  <button
+                    class="bg-transparent border border-white text-white px-4 py-2 rounded-md font-medium hover:bg-green-dark transition-colors"
+                  >
+                    联系我
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- 主要内容区域 -->
-      <div class="container mx-auto px-4 mt-8">
-        <!-- 查看所有作品集的按钮 - 顶部操作区 -->
-        <div class="flex justify-end mb-6">
-          <router-link
-            to="/portfolio"
-            class="flex items-center px-6 py-2 bg-primary text-white rounded-lg shadow hover:bg-green-dark transition-colors"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-5 w-5 mr-2"
-              viewBox="0 0 20 20"
-              fill="currentColor"
+        <!-- 主要内容区域 -->
+        <div class="container mx-auto px-4 mt-8">
+          <!-- 查看所有作品集的按钮 - 顶部操作区 -->
+          <div class="flex justify-end mb-6">
+            <router-link
+              to="/portfolio"
+              class="flex items-center px-6 py-2 bg-primary text-white rounded-lg shadow hover:bg-green-dark transition-colors"
             >
-              <path d="M4 3a2 2 0 100 4h12a2 2 0 100-4H4z" />
-              <path
-                fill-rule="evenodd"
-                d="M3 8h14v7a2 2 0 01-2 2H5a2 2 0 01-2-2V8zm5 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"
-                clip-rule="evenodd"
-              />
-            </svg>
-            查看我的所有作品集
-          </router-link>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <!-- 左侧用户详细信息 -->
-          <div class="md:col-span-1">
-            <!-- 数据统计卡片 -->
-            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-              <h2 class="text-xl font-semibold text-neutral-dark mb-4">统计数据</h2>
-              <div class="grid grid-cols-3 gap-4 text-center">
-                <div>
-                  <div class="text-2xl font-bold text-primary">{{ photoCount }}</div>
-                  <div class="text-sm text-neutral-dark">作品</div>
-                </div>
-                <div>
-                  <div class="text-2xl font-bold text-primary">
-                    {{ userStore.userInfo?.followersCount || 0 }}
-                  </div>
-                  <div class="text-sm text-neutral-dark">粉丝</div>
-                </div>
-                <div>
-                  <div class="text-2xl font-bold text-primary">
-                    {{ userStore.userInfo?.followingCount || 0 }}
-                  </div>
-                  <div class="text-sm text-neutral-dark">关注</div>
-                </div>
-              </div>
-            </div>
-
-            <!-- 个人信息卡片 -->
-            <div class="bg-white rounded-lg shadow-md p-6">
-              <h2 class="text-xl font-semibold text-neutral-dark mb-4">个人资料</h2>
-              <div class="space-y-4">
-                <div>
-                  <h3 class="text-sm text-neutral-dark font-medium">全名</h3>
-                  <p class="mt-1 text-primary">{{ userStore.fullName || '暂无' }}</p>
-                </div>
-                <div>
-                  <h3 class="text-sm text-neutral-dark font-medium">邮箱</h3>
-                  <p class="mt-1 text-primary">{{ userStore.userInfo?.email }}</p>
-                </div>
-                <div>
-                  <h3 class="text-sm text-neutral-dark font-medium">电话</h3>
-                  <p class="mt-1 text-primary">{{ userStore.userInfo?.phoneNumber || '暂无' }}</p>
-                </div>
-                <div>
-                  <h3 class="text-sm text-neutral-dark font-medium">个人简介</h3>
-                  <p class="mt-1 text-primary">
-                    {{ userStore.userInfo?.biography || '用户暂未填写个人简介' }}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <!-- 专业信息卡片 -->
-            <div class="bg-white rounded-lg shadow-md p-6 mt-6" v-if="photographerDetails">
-              <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-semibold text-neutral-dark">摄影师详情</h2>
-                <button
-                  @click="openPhotographerModal"
-                  class="text-primary hover:text-green-dark transition-colors text-sm flex items-center"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    class="h-4 w-4 mr-1"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                    />
-                  </svg>
-                  更新资料
-                </button>
-              </div>
-              <div class="space-y-4">
-                <div>
-                  <h3 class="text-sm text-neutral-dark font-medium">专业认证</h3>
-                  <p class="mt-1 text-primary flex items-center">
-                    <span v-if="photographerDetails.isVerified" class="text-green-600 mr-2"
-                      >已认证</span
-                    >
-                    <span v-else class="text-yellow-600 mr-2">未认证</span>
-                    <span v-if="photographerDetails.verifiedAt" class="text-xs text-neutral-dark">
-                      (认证于 {{ formatDate(photographerDetails.verifiedAt) }})
-                    </span>
-                  </p>
-                </div>
-                <div>
-                  <h3 class="text-sm text-neutral-dark font-medium">个人简介</h3>
-                  <p class="mt-1 text-primary">{{ photographerDetails.bio || '暂无信息' }}</p>
-                </div>
-                <div>
-                  <h3 class="text-sm text-neutral-dark font-medium">摄影经验</h3>
-                  <p class="mt-1 text-primary">
-                    {{ photographerDetails.experience || '暂无信息' }}
-                  </p>
-                </div>
-                <div>
-                  <h3 class="text-sm text-neutral-dark font-medium">摄影设备</h3>
-                  <p class="mt-1 text-primary">
-                    {{ photographerDetails.equipmentInfo || '暂无信息' }}
-                  </p>
-                </div>
-                <div>
-                  <h3 class="text-sm text-neutral-dark font-medium">常驻地</h3>
-                  <p class="mt-1 text-primary">{{ photographerDetails.location || '暂无信息' }}</p>
-                </div>
-                <div>
-                  <h3 class="text-sm text-neutral-dark font-medium">价格区间</h3>
-                  <p class="mt-1 text-primary">
-                    {{
-                      photographerDetails.priceRangeMin && photographerDetails.priceRangeMax
-                        ? `¥${photographerDetails.priceRangeMin} ~ ¥${photographerDetails.priceRangeMax}`
-                        : '暂无信息'
-                    }}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div class="bg-white rounded-lg shadow-md p-6 mt-6" v-if="retoucherDetails">
-              <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-semibold text-neutral-dark">修图师详情</h2>
-                <button
-                  @click="openRetoucherModal"
-                  class="text-primary hover:text-green-dark transition-colors text-sm flex items-center"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    class="h-4 w-4 mr-1"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                    />
-                  </svg>
-                  更新资料
-                </button>
-              </div>
-              <div class="space-y-4">
-                <div>
-                  <h3 class="text-sm text-neutral-dark font-medium">专业认证</h3>
-                  <p class="mt-1 text-primary flex items-center">
-                    <span v-if="retoucherDetails.isVerified" class="text-green-600 mr-2"
-                      >已认证</span
-                    >
-                    <span v-else class="text-yellow-600 mr-2">未认证</span>
-                    <span v-if="retoucherDetails.verifiedAt" class="text-xs text-neutral-dark">
-                      (认证于 {{ formatDate(retoucherDetails.verifiedAt) }})
-                    </span>
-                  </p>
-                </div>
-                <div>
-                  <h3 class="text-sm text-neutral-dark font-medium">个人简介</h3>
-                  <p class="mt-1 text-primary">{{ retoucherDetails.bio || '暂无信息' }}</p>
-                </div>
-                <div>
-                  <h3 class="text-sm text-neutral-dark font-medium">专业领域</h3>
-                  <p class="mt-1 text-primary">{{ retoucherDetails.expertise || '暂无信息' }}</p>
-                </div>
-                <div>
-                  <h3 class="text-sm text-neutral-dark font-medium">使用软件</h3>
-                  <p class="mt-1 text-primary">{{ retoucherDetails.software || '暂无信息' }}</p>
-                </div>
-                <div>
-                  <h3 class="text-sm text-neutral-dark font-medium">单张价格</h3>
-                  <p class="mt-1 text-primary">
-                    {{
-                      retoucherDetails.pricePerPhoto
-                        ? `¥${retoucherDetails.pricePerPhoto}`
-                        : '暂无信息'
-                    }}
-                  </p>
-                </div>
-              </div>
-            </div>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-5 w-5 mr-2"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path d="M4 3a2 2 0 100 4h12a2 2 0 100-4H4z" />
+                <path
+                  fill-rule="evenodd"
+                  d="M3 8h14v7a2 2 0 01-2 2H5a2 2 0 01-2-2V8zm5 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"
+                  clip-rule="evenodd"
+                />
+              </svg>
+              查看我的所有作品集
+            </router-link>
           </div>
 
-          <!-- 右侧作品集展示 -->
-          <div class="md:col-span-2">
-            <div class="bg-white rounded-lg shadow-md p-6">
-              <!-- 作品集切换标签 -->
-              <div class="mb-6 border-b border-green-light">
-                <div class="flex">
-                  <button
-                    @click="activePortfolioTab = 'photography'"
-                    :class="[
-                      'px-4 py-2 font-medium text-sm transition-colors border-b-2 -mb-px',
-                      activePortfolioTab === 'photography'
-                        ? 'border-primary text-primary'
-                        : 'border-transparent text-neutral-dark hover:text-primary',
-                    ]"
-                  >
-                    摄影作品集
-                  </button>
-                  <button
-                    @click="activePortfolioTab = 'retouching'"
-                    :class="[
-                      'px-4 py-2 font-medium text-sm transition-colors border-b-2 -mb-px',
-                      activePortfolioTab === 'retouching'
-                        ? 'border-primary text-primary'
-                        : 'border-transparent text-neutral-dark hover:text-primary',
-                    ]"
-                  >
-                    修图作品集
-                  </button>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <!-- 左侧用户详细信息 -->
+            <div class="md:col-span-1">
+              <!-- 数据统计卡片 -->
+              <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <h2 class="text-xl font-semibold text-neutral-dark mb-4">统计数据</h2>
+                <div class="grid grid-cols-3 gap-4 text-center">
+                  <div>
+                    <div class="text-2xl font-bold text-primary">{{ photoCount }}</div>
+                    <div class="text-sm text-neutral-dark">作品</div>
+                  </div>
+                  <div>
+                    <div class="text-2xl font-bold text-primary">
+                      {{ userStore.userInfo?.followersCount || 0 }}
+                    </div>
+                    <div class="text-sm text-neutral-dark">粉丝</div>
+                  </div>
+                  <div>
+                    <div class="text-2xl font-bold text-primary">
+                      {{ userStore.userInfo?.followingCount || 0 }}
+                    </div>
+                    <div class="text-sm text-neutral-dark">关注</div>
+                  </div>
                 </div>
               </div>
 
-              <!-- 摄影作品集 -->
-              <div v-if="activePortfolioTab === 'photography'">
-                <div class="flex justify-between items-center mb-6">
-                  <h2 class="text-xl font-semibold text-neutral-dark">摄影作品集</h2>
-                  <!-- <button
-                    v-if="isPhotographer"
-                    class="text-primary hover:text-green-dark transition-colors"
-                  >
-                    查看全部
-                  </button> -->
-                </div>
-
-                <!-- 摄影师角色验证 -->
-                <template v-if="isPhotographer">
-                  <!-- 摄影作品网格 -->
-                  <div
-                    v-if="photographyPortfolio.length > 0"
-                    class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
-                  >
-                    <div
-                      v-for="portfolio in photographyPortfolio.slice(0, 3)"
-                      :key="portfolio.portfolioId"
-                      class="group relative overflow-hidden rounded-lg aspect-square"
-                    >
-                      <img
-                        :src="portfolio.coverImageUrl"
-                        :alt="portfolio.title"
-                        class="w-full h-full object-cover transition-transform group-hover:scale-105"
-                      />
-                      <div
-                        class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4"
-                      >
-                        <div class="text-white">
-                          <h3 class="font-medium">{{ portfolio.title }}</h3>
-                          <p class="text-sm text-green-light">{{ portfolio.category }}</p>
-                        </div>
-                      </div>
-                    </div>
-                    <!-- 如果作品集不足三个，添加占位元素 -->
-                    <div
-                      v-for="i in Math.max(0, 3 - photographyPortfolio.length)"
-                      :key="`placeholder-${i}`"
-                      class="bg-neutral bg-opacity-20 rounded-lg aspect-square flex items-center justify-center"
-                    >
-                      <router-link
-                        to="/portfolio/photographer/create"
-                        class="text-neutral-dark text-center"
-                      >
-                        <div class="text-3xl mb-2">+</div>
-                        <div>添加更多作品集</div>
-                      </router-link>
-                    </div>
+              <!-- 个人信息卡片 -->
+              <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-xl font-semibold text-neutral-dark mb-4">个人资料</h2>
+                <div class="space-y-4">
+                  <div>
+                    <h3 class="text-sm text-neutral-dark font-medium">全名</h3>
+                    <p class="mt-1 text-primary">{{ userStore.fullName || '暂无' }}</p>
                   </div>
-
-                  <!-- 无摄影作品状态 -->
-                  <div v-else class="bg-neutral bg-opacity-20 rounded-lg p-6 text-center">
-                    <div class="text-neutral-dark mb-4">暂无摄影作品</div>
-                    <router-link
-                      to="/portfolio/photographer/create"
-                      class="mt-4 px-4 py-2 bg-primary text-white rounded-md hover:bg-green-dark transition-colors"
-                    >
-                      上传第一张摄影作品
-                    </router-link>
+                  <div>
+                    <h3 class="text-sm text-neutral-dark font-medium">邮箱</h3>
+                    <p class="mt-1 text-primary">{{ userStore.userInfo?.email }}</p>
                   </div>
-                </template>
-
-                <!-- 非摄影师提示 -->
-                <div v-else class="bg-neutral bg-opacity-20 rounded-lg p-8 text-center">
-                  <div class="text-neutral-dark text-lg mb-3">您还不是认证摄影师</div>
-                  <p class="text-sm text-neutral-dark mb-6">
-                    成为认证摄影师可以展示您的摄影作品集，接受约拍邀请
-                  </p>
-                  <router-link
-                    to="/photographer-certification"
-                    class="px-6 py-3 bg-primary text-white rounded-md hover:bg-green-dark transition-colors"
-                  >
-                    去认证摄影师
-                  </router-link>
+                  <div>
+                    <h3 class="text-sm text-neutral-dark font-medium">电话</h3>
+                    <p class="mt-1 text-primary">{{ userStore.userInfo?.phoneNumber || '暂无' }}</p>
+                  </div>
+                  <div>
+                    <h3 class="text-sm text-neutral-dark font-medium">个人简介</h3>
+                    <p class="mt-1 text-primary">
+                      {{ userStore.userInfo?.biography || '用户暂未填写个人简介' }}
+                    </p>
+                  </div>
                 </div>
               </div>
 
-              <!-- 修图作品集 -->
-              <div v-else-if="activePortfolioTab === 'retouching'">
-                <div class="flex justify-between items-center mb-6">
-                  <h2 class="text-xl font-semibold text-neutral-dark">修图作品集</h2>
-                  <!-- <button
-                    v-if="isRetoucher"
-                    class="text-primary hover:text-green-dark transition-colors"
+              <!-- 专业信息卡片 -->
+              <div class="bg-white rounded-lg shadow-md p-6 mt-6" v-if="photographerDetails">
+                <div class="flex justify-between items-center mb-4">
+                  <h2 class="text-xl font-semibold text-neutral-dark">摄影师详情</h2>
+                  <button
+                    @click="openPhotographerModal"
+                    class="text-primary hover:text-green-dark transition-colors text-sm flex items-center"
                   >
-                    查看全部
-                  </button> -->
-                </div>
-
-                <!-- 修图师角色验证 -->
-                <template v-if="isRetoucher">
-                  <!-- 修图作品网格 -->
-                  <!-- 修图作品网格 -->
-                  <div
-                    v-if="retoucherPublicPortfolios.length > 0"
-                    class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
-                  >
-                    <div
-                      v-for="(portfolio, index) in retoucherPublicPortfolios.slice(0, 3)"
-                      :key="portfolio.portfolioId"
-                      class="group relative overflow-hidden rounded-lg aspect-square"
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="h-4 w-4 mr-1"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
                     >
-                      <img
-                        :src="portfolio.coverImageUrl"
-                        :alt="portfolio.title"
-                        class="w-full h-full object-cover transition-transform group-hover:scale-105"
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
                       />
-                      <div
-                        class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4"
+                    </svg>
+                    更新资料
+                  </button>
+                </div>
+                <div class="space-y-4">
+                  <div>
+                    <h3 class="text-sm text-neutral-dark font-medium">专业认证</h3>
+                    <p class="mt-1 text-primary flex items-center">
+                      <span v-if="photographerDetails.isVerified" class="text-green-600 mr-2"
+                        >已认证</span
                       >
-                        <div class="text-white">
-                          <h3 class="font-medium">{{ portfolio.title }}</h3>
-                          <p class="text-sm text-green-light">{{ portfolio.category }}</p>
-                        </div>
-                      </div>
-                    </div>
-                    <!-- 如果作品集不足三个，添加占位元素 -->
-                    <div
-                      v-for="i in Math.max(0, 3 - retoucherPublicPortfolios.length)"
-                      :key="`placeholder-${i}`"
-                      class="bg-neutral bg-opacity-20 rounded-lg aspect-square flex items-center justify-center"
-                    >
-                      <router-link
-                        to="/portfolio/retoucher/create"
-                        class="text-neutral-dark text-center"
-                      >
-                        <div class="text-3xl mb-2">+</div>
-                        <div>添加更多作品集</div>
-                      </router-link>
-                    </div>
+                      <span v-else class="text-yellow-600 mr-2">未认证</span>
+                      <span v-if="photographerDetails.verifiedAt" class="text-xs text-neutral-dark">
+                        (认证于 {{ formatDate(photographerDetails.verifiedAt) }})
+                      </span>
+                    </p>
                   </div>
+                  <div>
+                    <h3 class="text-sm text-neutral-dark font-medium">个人简介</h3>
+                    <p class="mt-1 text-primary">{{ photographerDetails.bio || '暂无信息' }}</p>
+                  </div>
+                  <div>
+                    <h3 class="text-sm text-neutral-dark font-medium">摄影经验</h3>
+                    <p class="mt-1 text-primary">
+                      {{ photographerDetails.experience || '暂无信息' }}
+                    </p>
+                  </div>
+                  <div>
+                    <h3 class="text-sm text-neutral-dark font-medium">摄影设备</h3>
+                    <p class="mt-1 text-primary">
+                      {{ photographerDetails.equipmentInfo || '暂无信息' }}
+                    </p>
+                  </div>
+                  <div>
+                    <h3 class="text-sm text-neutral-dark font-medium">常驻地</h3>
+                    <p class="mt-1 text-primary">
+                      {{ photographerDetails.location || '暂无信息' }}
+                    </p>
+                  </div>
+                  <div>
+                    <h3 class="text-sm text-neutral-dark font-medium">价格区间</h3>
+                    <p class="mt-1 text-primary">
+                      {{
+                        photographerDetails.priceRangeMin && photographerDetails.priceRangeMax
+                          ? `¥${photographerDetails.priceRangeMin} ~ ¥${photographerDetails.priceRangeMax}`
+                          : '暂无信息'
+                      }}
+                    </p>
+                  </div>
+                </div>
+              </div>
 
-                  <!-- 无修图作品状态 -->
-                  <div v-else class="bg-neutral bg-opacity-20 rounded-lg p-6 text-center">
-                    <div class="text-neutral-dark">暂无修图作品</div>
+              <div class="bg-white rounded-lg shadow-md p-6 mt-6" v-if="retoucherDetails">
+                <div class="flex justify-between items-center mb-4">
+                  <h2 class="text-xl font-semibold text-neutral-dark">修图师详情</h2>
+                  <button
+                    @click="openRetoucherModal"
+                    class="text-primary hover:text-green-dark transition-colors text-sm flex items-center"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="h-4 w-4 mr-1"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                      />
+                    </svg>
+                    更新资料
+                  </button>
+                </div>
+                <div class="space-y-4">
+                  <div>
+                    <h3 class="text-sm text-neutral-dark font-medium">专业认证</h3>
+                    <p class="mt-1 text-primary flex items-center">
+                      <span v-if="retoucherDetails.isVerified" class="text-green-600 mr-2"
+                        >已认证</span
+                      >
+                      <span v-else class="text-yellow-600 mr-2">未认证</span>
+                      <span v-if="retoucherDetails.verifiedAt" class="text-xs text-neutral-dark">
+                        (认证于 {{ formatDate(retoucherDetails.verifiedAt) }})
+                      </span>
+                    </p>
+                  </div>
+                  <div>
+                    <h3 class="text-sm text-neutral-dark font-medium">个人简介</h3>
+                    <p class="mt-1 text-primary">{{ retoucherDetails.bio || '暂无信息' }}</p>
+                  </div>
+                  <div>
+                    <h3 class="text-sm text-neutral-dark font-medium">专业领域</h3>
+                    <p class="mt-1 text-primary">{{ retoucherDetails.expertise || '暂无信息' }}</p>
+                  </div>
+                  <div>
+                    <h3 class="text-sm text-neutral-dark font-medium">使用软件</h3>
+                    <p class="mt-1 text-primary">{{ retoucherDetails.software || '暂无信息' }}</p>
+                  </div>
+                  <div>
+                    <h3 class="text-sm text-neutral-dark font-medium">单张价格</h3>
+                    <p class="mt-1 text-primary">
+                      {{
+                        retoucherDetails.pricePerPhoto
+                          ? `¥${retoucherDetails.pricePerPhoto}`
+                          : '暂无信息'
+                      }}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 右侧作品集展示 -->
+            <div class="md:col-span-2">
+              <div class="bg-white rounded-lg shadow-md p-6">
+                <!-- 作品集切换标签 -->
+                <div class="mb-6 border-b border-green-light">
+                  <div class="flex">
                     <button
-                      class="mt-4 px-4 py-2 bg-primary text-white rounded-md hover:bg-green-dark transition-colors"
+                      @click="activePortfolioTab = 'photography'"
+                      :class="[
+                        'px-4 py-2 font-medium text-sm transition-colors border-b-2 -mb-px',
+                        activePortfolioTab === 'photography'
+                          ? 'border-primary text-primary'
+                          : 'border-transparent text-neutral-dark hover:text-primary',
+                      ]"
                     >
-                      上传第一组修图作品
+                      摄影作品集
+                    </button>
+                    <button
+                      @click="activePortfolioTab = 'retouching'"
+                      :class="[
+                        'px-4 py-2 font-medium text-sm transition-colors border-b-2 -mb-px',
+                        activePortfolioTab === 'retouching'
+                          ? 'border-primary text-primary'
+                          : 'border-transparent text-neutral-dark hover:text-primary',
+                      ]"
+                    >
+                      修图作品集
                     </button>
                   </div>
-                </template>
+                </div>
 
-                <!-- 非修图师提示 -->
-                <div v-else class="bg-neutral bg-opacity-20 rounded-lg p-8 text-center">
-                  <div class="text-neutral-dark text-lg mb-3">您还不是认证修图师</div>
-                  <p class="text-sm text-neutral-dark mb-6">
-                    成为认证修图师可以展示您的修图技术，接受修图订单
-                  </p>
-                  <button
-                    class="px-6 py-3 bg-primary text-white rounded-md hover:bg-green-dark transition-colors"
-                  >
-                    去认证修图师
-                  </button>
+                <!-- 摄影作品集 -->
+                <div v-if="activePortfolioTab === 'photography'">
+                  <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-semibold text-neutral-dark">摄影作品集</h2>
+                    <!-- <button
+                      v-if="isPhotographer"
+                      class="text-primary hover:text-green-dark transition-colors"
+                    >
+                      查看全部
+                    </button> -->
+                  </div>
+
+                  <!-- 摄影师角色验证 -->
+                  <template v-if="isPhotographer">
+                    <!-- 摄影作品网格 -->
+                    <div
+                      v-if="photographyPortfolio.length > 0"
+                      class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+                    >
+                      <div
+                        v-for="portfolio in photographyPortfolio.slice(0, 3)"
+                        :key="portfolio.portfolioId"
+                        class="group relative overflow-hidden rounded-lg aspect-square"
+                      >
+                        <img
+                          :src="portfolio.coverImageUrl"
+                          :alt="portfolio.title"
+                          class="w-full h-full object-cover transition-transform group-hover:scale-105"
+                        />
+                        <div
+                          class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4"
+                        >
+                          <div class="text-white">
+                            <h3 class="font-medium">{{ portfolio.title }}</h3>
+                            <p class="text-sm text-green-light">{{ portfolio.category }}</p>
+                          </div>
+                        </div>
+                      </div>
+                      <!-- 如果作品集不足三个，添加占位元素 -->
+                      <div
+                        v-for="i in Math.max(0, 3 - photographyPortfolio.length)"
+                        :key="`placeholder-${i}`"
+                        class="bg-neutral bg-opacity-20 rounded-lg aspect-square flex items-center justify-center"
+                      >
+                        <router-link
+                          to="/portfolio/photographer/create"
+                          class="text-neutral-dark text-center"
+                        >
+                          <div class="text-3xl mb-2">+</div>
+                          <div>添加更多作品集</div>
+                        </router-link>
+                      </div>
+                    </div>
+
+                    <!-- 无摄影作品状态 -->
+                    <div v-else class="bg-neutral bg-opacity-20 rounded-lg p-6 text-center">
+                      <div class="text-neutral-dark mb-4">暂无摄影作品</div>
+                      <router-link
+                        to="/portfolio/photographer/create"
+                        class="mt-4 px-4 py-2 bg-primary text-white rounded-md hover:bg-green-dark transition-colors"
+                      >
+                        上传第一张摄影作品
+                      </router-link>
+                    </div>
+                  </template>
+
+                  <!-- 非摄影师提示 -->
+                  <div v-else class="bg-neutral bg-opacity-20 rounded-lg p-8 text-center">
+                    <div class="text-neutral-dark text-lg mb-3">您还不是认证摄影师</div>
+                    <p class="text-sm text-neutral-dark mb-6">
+                      成为认证摄影师可以展示您的摄影作品集，接受约拍邀请
+                    </p>
+                    <router-link
+                      to="/photographer-certification"
+                      class="px-6 py-3 bg-primary text-white rounded-md hover:bg-green-dark transition-colors"
+                    >
+                      去认证摄影师
+                    </router-link>
+                  </div>
+                </div>
+
+                <!-- 修图作品集 -->
+                <div v-else-if="activePortfolioTab === 'retouching'">
+                  <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-semibold text-neutral-dark">修图作品集</h2>
+                    <!-- <button
+                      v-if="isRetoucher"
+                      class="text-primary hover:text-green-dark transition-colors"
+                    >
+                      查看全部
+                    </button> -->
+                  </div>
+
+                  <!-- 修图师角色验证 -->
+                  <template v-if="isRetoucher">
+                    <!-- 修图作品网格 -->
+                    <!-- 修图作品网格 -->
+                    <div
+                      v-if="retoucherPublicPortfolios.length > 0"
+                      class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+                    >
+                      <div
+                        v-for="(portfolio, index) in retoucherPublicPortfolios.slice(0, 3)"
+                        :key="portfolio.portfolioId"
+                        class="group relative overflow-hidden rounded-lg aspect-square"
+                      >
+                        <img
+                          :src="portfolio.coverImageUrl"
+                          :alt="portfolio.title"
+                          class="w-full h-full object-cover transition-transform group-hover:scale-105"
+                        />
+                        <div
+                          class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4"
+                        >
+                          <div class="text-white">
+                            <h3 class="font-medium">{{ portfolio.title }}</h3>
+                            <p class="text-sm text-green-light">{{ portfolio.category }}</p>
+                          </div>
+                        </div>
+                      </div>
+                      <!-- 如果作品集不足三个，添加占位元素 -->
+                      <div
+                        v-for="i in Math.max(0, 3 - retoucherPublicPortfolios.length)"
+                        :key="`placeholder-${i}`"
+                        class="bg-neutral bg-opacity-20 rounded-lg aspect-square flex items-center justify-center"
+                      >
+                        <router-link
+                          to="/portfolio/retoucher/create"
+                          class="text-neutral-dark text-center"
+                        >
+                          <div class="text-3xl mb-2">+</div>
+                          <div>添加更多作品集</div>
+                        </router-link>
+                      </div>
+                    </div>
+
+                    <!-- 无修图作品状态 -->
+                    <div v-else class="bg-neutral bg-opacity-20 rounded-lg p-6 text-center">
+                      <div class="text-neutral-dark">暂无修图作品</div>
+                      <button
+                        class="mt-4 px-4 py-2 bg-primary text-white rounded-md hover:bg-green-dark transition-colors"
+                      >
+                        上传第一组修图作品
+                      </button>
+                    </div>
+                  </template>
+
+                  <!-- 非修图师提示 -->
+                  <div v-else class="bg-neutral bg-opacity-20 rounded-lg p-8 text-center">
+                    <div class="text-neutral-dark text-lg mb-3">您还不是认证修图师</div>
+                    <p class="text-sm text-neutral-dark mb-6">
+                      成为认证修图师可以展示您的修图技术，接受修图订单
+                    </p>
+                    <button
+                      class="px-6 py-3 bg-primary text-white rounded-md hover:bg-green-dark transition-colors"
+                    >
+                      去认证修图师
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
-    </template>
-    <ProfessionalProfileModal
-      :is-open="isProfileModalOpen"
-      :profile-type="activeProfileType"
-      :profile-data="activeProfileType === 'photographer' ? photographerDetails : retoucherDetails"
-      @close="closeProfileModal"
-      @save="saveProfileChanges"
-    />
+      </template>
+      <ProfessionalProfileModal
+        :is-open="isProfileModalOpen"
+        :profile-type="activeProfileType"
+        :profile-data="
+          activeProfileType === 'photographer' ? photographerDetails : retoucherDetails
+        "
+        @close="closeProfileModal"
+        @save="saveProfileChanges"
+      />
+    </div>
   </div>
 </template>
 
@@ -482,11 +492,13 @@ import { useUserStore } from '../stores/userStore'
 import { retoucherPortfolioAPI, photographerPortfolioAPI } from '../services/apiService.ts' // 确保路径正确
 import apiClient from '../services/apiService.ts' // 确保路径正确
 import ProfessionalProfileModal from '../components/ProfessionalProfileModal.vue' // 确保路径正确
+import SideBar from '../components/SideBar.vue'
 
 export default defineComponent({
   name: 'UserProfileView',
   components: {
     ProfessionalProfileModal, // 在这里注册组件
+    SideBar, // 注册侧边栏组件
   },
   setup() {
     // 使用用户信息存储

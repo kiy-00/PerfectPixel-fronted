@@ -123,6 +123,11 @@ const router = createRouter({
       component: () => import('../views/RetouchServiceView.vue'),
     },
     {
+      path: '/photography-service',
+      name: 'PhotographyService',
+      component: () => import('../views/PhotographyServiceView.vue'),
+    },
+    {
       path: '/user/:id',
       name: 'user-detail',
       component: () => import('../views/UserDetailView.vue'),

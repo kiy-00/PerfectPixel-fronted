@@ -237,7 +237,40 @@ export const photographerAPI = {
     return apiClient.get(`/Photographer/${photographerId}`)
   },
 
-  // 其他摄影师相关API可以在这里添加
+  // 搜索摄影师
+  searchPhotographers: (
+    keyword: string,
+    filters?: {
+      minPrice?: number
+      maxPrice?: number
+      location?: string
+    },
+  ) => {
+    console.log('调用searchPhotographers API, 参数:', { keyword, filters })
+
+    // 构建查询参数, keyword是必填字段
+    const params: any = {
+      keyword: keyword || ' ', // 如果没有关键词，传递空格字符作为占位符
+      verifiedOnly: true,
+    }
+
+    // 添加可选的筛选参数
+    if (filters) {
+      if (filters.minPrice !== undefined && filters.minPrice !== null) {
+        params.minPrice = filters.minPrice
+      }
+      if (filters.maxPrice !== undefined && filters.maxPrice !== null) {
+        params.maxPrice = filters.maxPrice
+      }
+      if (filters.location) {
+        params.location = filters.location
+      }
+    }
+
+    console.log('发送给后端的参数:', params)
+
+    return apiClient.get(`/Photographer/search/v2`, { params })
+  },
 }
 
 // 修图师相关API
