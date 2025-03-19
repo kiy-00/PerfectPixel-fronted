@@ -441,7 +441,7 @@ export default defineComponent({
             categories: categories,
             description: p.bio || '暂无描述',
             location: p.location || '',
-            coverImage: `https://avatars.dicebear.com/api/initials/${encodeURIComponent(p.username)}.svg`,
+            coverImage: '/images/photographer/cat.jpg', // 使用固定的猫咪图片作为封面
             experience: p.experience || '',
           }
         })

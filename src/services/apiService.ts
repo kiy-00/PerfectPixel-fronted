@@ -313,4 +313,33 @@ export const retoucherAPI = {
   // 其他修图师相关API可以在这里添加
 }
 
+// 约拍预约相关API
+export const bookingAPI = {
+  // 创建约拍预约
+  createBooking: (bookingData: {
+    photographerId: number
+    bookingDate: string
+    location: string
+    requirements: string
+    photoCount: number
+    services: Array<{
+      serviceName: string
+      description: string
+      price: number
+    }>
+  }) => {
+    return apiClient.post('/Booking', bookingData)
+  },
+
+  // 获取预约列表
+  getUserBookings: () => {
+    return apiClient.get('/Booking/user')
+  },
+
+  // 获取单个预约详情
+  getBookingById: (bookingId: number) => {
+    return apiClient.get(`/Booking/${bookingId}`)
+  },
+}
+
 export default apiClient
