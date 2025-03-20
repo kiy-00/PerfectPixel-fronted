@@ -196,32 +196,32 @@
                         </tr>
                       </thead>
                       <tbody class="bg-white divide-y divide-neutral">
-                        <tr v-for="order in photographyOrdersPlaced" :key="order.id">
+                        <tr v-for="booking in photographyOrdersPlaced" :key="booking.bookingId">
                           <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-primary">
-                            {{ order.orderNumber }}
+                            {{ booking.bookingId }}
                           </td>
                           <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-dark">
-                            {{ order.photographerName }}
+                            {{ booking.photographerName }}
                           </td>
                           <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-dark">
-                            {{ formatDate(order.appointmentDate) }}
+                            {{ formatDate(booking.bookingDate) }}
                           </td>
                           <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-dark">
-                            ¥{{ order.amount }}
+                            ¥{{ booking.initialAmount }}
                           </td>
                           <td class="px-6 py-4 whitespace-nowrap">
                             <span
                               :class="[
                                 'px-2 py-1 text-xs rounded-full',
-                                getStatusClass(order.status),
+                                getStatusClass(booking.status),
                               ]"
                             >
-                              {{ getStatusText(order.status) }}
+                              {{ getStatusText(booking.status) }}
                             </span>
                           </td>
                           <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-dark">
                             <button
-                              @click="viewOrderDetails(order.id)"
+                              @click="viewBookingDetails(booking.bookingId)"
                               class="text-primary hover:text-green-dark"
                             >
                               查看详情
@@ -235,7 +235,7 @@
                 <div v-else class="text-center py-12">
                   <div class="text-neutral-dark mb-4">您还没有发布任何摄影预约</div>
                   <router-link
-                    to="/photographers"
+                    to="/photography-service"
                     class="px-6 py-2 bg-primary text-white rounded-md hover:bg-green-dark transition-colors"
                   >
                     去寻找摄影师
@@ -495,16 +495,19 @@ export default defineComponent({
 
     // 根据用户角色过滤标签页
     const filteredTabs = computed(() => {
-      const tabs = [...allTabs.value.slice(0, 2)] // 前两个标签对所有用户可见
+      // 基本标签对所有用户可见
+      const tabs = [
+        allTabs.value[0], // 我的修图订单
+        allTabs.value[1], // 我的摄影预约
+      ]
 
-      // 如果是修图师，添加"我收到的修图订单"标签
+      // 根据用户角色添加额外标签
       if (isRetoucher.value) {
-        tabs.push(allTabs.value[2])
+        tabs.push({ ...allTabs.value[2] }) // 使用展开运算符创建副本，避免引用问题
       }
 
-      // 如果是摄影师，添加"我收到的摄影预约"标签
       if (isPhotographer.value) {
-        tabs.push(allTabs.value[3])
+        tabs.push({ ...allTabs.value[3] }) // 使用展开运算符创建副本，避免引用问题
       }
 
       return tabs
@@ -561,19 +564,40 @@ export default defineComponent({
       error.value = ''
 
       try {
-        // 获取修图订单 - 使用正确的API端点
+        // 获取修图订单
         console.log('正在获取用户修图订单...')
-        const retouchOrderResponse = await apiClient.get('/RetouchOrder/user')
+        try {
+          const retouchOrderResponse = await apiClient.get('/RetouchOrder/user')
+          retouchOrdersPlaced.value = retouchOrderResponse.data
+          console.log(
+            `获取到${retouchOrdersPlaced.value.length}条修图订单:`,
+            retouchOrdersPlaced.value,
+          )
+          allTabs.value[0].count = retouchOrdersPlaced.value.length
+        } catch (err) {
+          console.error('获取修图订单失败:', err)
+          retouchOrdersPlaced.value = []
+          allTabs.value[0].count = 0
+        }
 
-        // 保存获取到的订单数据
-        retouchOrdersPlaced.value = retouchOrderResponse.data
-        console.log(
-          `获取到${retouchOrdersPlaced.value.length}条修图订单:`,
-          retouchOrdersPlaced.value,
-        )
+        // 获取摄影预约
+        console.log('正在获取用户摄影预约...')
+        try {
+          const bookingResponse = await apiClient.get('/Booking/user')
+          photographyOrdersPlaced.value = bookingResponse.data
+          console.log(
+            `获取到${photographyOrdersPlaced.value.length}条摄影预约:`,
+            photographyOrdersPlaced.value,
+          )
+          allTabs.value[1].count = photographyOrdersPlaced.value.length
+        } catch (err) {
+          console.error('获取摄影预约失败:', err)
+          photographyOrdersPlaced.value = []
+          allTabs.value[1].count = 0
+        }
 
         // 如果用户是修图师，获取收到的修图订单
-        if (isRetoucher.value) {
+        if (userStore.isRetoucher) {
           console.log('当前用户是修图师，正在获取收到的修图订单...')
           try {
             const retoucherOrderResponse = await apiClient.get('/RetouchOrder/retoucher')
@@ -590,20 +614,22 @@ export default defineComponent({
           }
         }
 
-        // 暂时清空其他类型的订单列表 - 后续可以根据实际API添加
-        photographyOrdersPlaced.value = []
-        photographyOrdersReceived.value = []
-
-        // 更新标签页计数
-        allTabs.value[0].count = retouchOrdersPlaced.value.length
-        allTabs.value[1].count = 0 // 暂无摄影预约数据
-
-        if (isRetoucher.value) {
-          allTabs.value[2].count = retouchOrdersReceived.value.length
-        }
-
-        if (isPhotographer.value) {
-          allTabs.value[3].count = 0 // 暂无收到的摄影预约数据
+        // 如果用户是摄影师，获取收到的摄影预约
+        if (userStore.isPhotographer) {
+          console.log('当前用户是摄影师，正在获取收到的摄影预约...')
+          try {
+            const photographerBookingResponse = await apiClient.get('/Booking/photographer')
+            photographyOrdersReceived.value = photographerBookingResponse.data
+            console.log(
+              `获取到${photographyOrdersReceived.value.length}条收到的摄影预约:`,
+              photographyOrdersReceived.value,
+            )
+            allTabs.value[3].count = photographyOrdersReceived.value.length
+          } catch (err) {
+            console.error('获取摄影师收到的预约失败:', err)
+            photographyOrdersReceived.value = []
+            allTabs.value[3].count = 0
+          }
         }
       } catch (err: any) {
         console.error('获取订单数据失败:', err)
@@ -618,6 +644,11 @@ export default defineComponent({
       router.push(`/retouch-order/${orderId}`)
     }
 
+    // 查看摄影预约详情
+    const viewBookingDetails = (bookingId: string) => {
+      router.push(`/photography-booking/${bookingId}`)
+    }
+
     // 处理订单（修图师/摄影师视角）
     const processOrder = (orderId: string) => {
       // 针对修图订单和摄影预约使用不同的路由
@@ -630,7 +661,14 @@ export default defineComponent({
 
     // 组件挂载时获取订单数据
     onMounted(() => {
-      fetchOrders()
+      // Fix: Replace checkAuth with the correct method from userStore
+      if (!userStore.isAuthenticated) {
+        // If not authenticated, redirect to login
+        router.push('/login')
+      } else {
+        // Otherwise fetch orders
+        fetchOrders()
+      }
     })
 
     return {
@@ -649,6 +687,7 @@ export default defineComponent({
       formatDate,
       fetchOrders,
       viewOrderDetails,
+      viewBookingDetails,
       processOrder,
     }
   },

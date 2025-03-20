@@ -192,6 +192,13 @@ const router = createRouter({
       component: () => import('../views/MyOrdersView.vue'),
       meta: { requiresAuth: true },
     },
+    {
+      path: '/photography-booking/:id',
+      name: 'photography-booking-detail',
+      component: () => import('../views/PhotographyBookingDetailView.vue'),
+      props: true,
+      meta: { requiresAuth: true },
+    },
   ],
 })
 
