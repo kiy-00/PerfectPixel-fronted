@@ -199,6 +199,16 @@ const router = createRouter({
       props: true,
       meta: { requiresAuth: true },
     },
+    {
+      path: '/photography-booking-process/:id',
+      name: 'photography-booking-process',
+      component: () => import('../views/PhotographyBookingProcessView.vue'),
+      props: true,
+      meta: {
+        requiresAuth: true,
+        requiresPhotographer: true,
+      },
+    },
   ],
 })
 

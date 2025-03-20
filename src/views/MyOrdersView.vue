@@ -384,34 +384,34 @@
                           </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-neutral">
-                          <tr v-for="order in photographyOrdersReceived" :key="order.id">
+                          <tr v-for="booking in photographyOrdersReceived" :key="booking.bookingId">
                             <td
                               class="px-6 py-4 whitespace-nowrap text-sm font-medium text-primary"
                             >
-                              {{ order.orderNumber }}
+                              {{ booking.bookingId }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-dark">
-                              {{ order.customerName }}
+                              {{ booking.username }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-dark">
-                              {{ formatDate(order.appointmentDate) }}
+                              {{ formatDate(booking.bookingDate) }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-dark">
-                              ¥{{ order.amount }}
+                              ¥{{ booking.initialAmount }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                               <span
                                 :class="[
                                   'px-2 py-1 text-xs rounded-full',
-                                  getStatusClass(order.status),
+                                  getStatusClass(booking.status),
                                 ]"
                               >
-                                {{ getStatusText(order.status) }}
+                                {{ getStatusText(booking.status) }}
                               </span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-dark">
                               <button
-                                @click="processOrder(order.id)"
+                                @click="processOrder(booking.bookingId)"
                                 class="text-primary hover:text-green-dark"
                               >
                                 处理预约
@@ -654,20 +654,34 @@ export default defineComponent({
       // 针对修图订单和摄影预约使用不同的路由
       if (activeTab.value === 'retouch-orders-received') {
         router.push(`/retouch-order-process/${orderId}`)
+      } else if (activeTab.value === 'photography-orders-received') {
+        // 对于摄影预约，使用专门的处理路由
+        router.push(`/photography-booking-process/${orderId}`)
       } else {
         router.push(`/order-process/${orderId}`) // 原有的通用路径，后续可以改为摄影专用
       }
     }
 
     // 组件挂载时获取订单数据
-    onMounted(() => {
-      // Fix: Replace checkAuth with the correct method from userStore
-      if (!userStore.isAuthenticated) {
-        // If not authenticated, redirect to login
-        router.push('/login')
-      } else {
-        // Otherwise fetch orders
-        fetchOrders()
+    onMounted(async () => {
+      loading.value = true
+
+      try {
+        // 尝试恢复用户会话，而不是立即检查用户是否已登录
+        // userStore.initializeUser() 会尝试从本地存储加载用户信息
+        const userLoaded = await userStore.initializeUser()
+
+        if (userLoaded) {
+          // 用户已登录，获取订单数据
+          await fetchOrders()
+        } else if (!userStore.isAuthenticated) {
+          // 只有在确认用户未登录后才重定向到登录页
+          router.push('/login')
+        }
+      } catch (error) {
+        console.error('初始化用户信息失败:', error)
+      } finally {
+        loading.value = false
       }
     })
 
