@@ -178,111 +178,57 @@
                     ></textarea>
                   </div>
 
-                  <!-- 服务选择 -->
+                  <!-- 服务选择 - 修改为预设服务项列表 -->
                   <div>
-                    <div class="flex justify-between items-center mb-3">
-                      <label class="block text-sm font-medium text-neutral-dark"
+                    <div class="mb-3">
+                      <label class="block text-sm font-medium text-neutral-dark mb-3"
                         >选择服务项目 <span class="text-error">*</span></label
                       >
-                      <button
-                        type="button"
-                        @click="addService"
-                        class="text-sm text-primary flex items-center"
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          class="h-4 w-4 mr-1"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M12 4v16m8-8H4"
-                          />
-                        </svg>
-                        添加服务
-                      </button>
-                    </div>
 
-                    <!-- 服务列表 -->
-                    <div v-if="bookingForm.services.length > 0" class="space-y-4">
+                      <!-- 基础套餐 -->
                       <div
-                        v-for="(service, index) in bookingForm.services"
-                        :key="index"
-                        class="p-4 border border-neutral rounded-md"
+                        class="mb-4 p-4 border border-primary rounded-md bg-green-light bg-opacity-10"
                       >
-                        <div class="flex justify-between mb-2">
-                          <h3 class="font-medium text-neutral-dark">服务项 #{{ index + 1 }}</h3>
-                          <button
-                            type="button"
-                            @click="removeService(index)"
-                            class="text-error hover:text-red-600"
-                          >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              class="h-5 w-5"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                              />
-                            </svg>
-                          </button>
+                        <div class="flex items-center mb-2">
+                          <input
+                            type="checkbox"
+                            id="baseService"
+                            checked
+                            disabled
+                            class="h-4 w-4 text-primary border-neutral rounded focus:ring-primary"
+                          />
+                          <label for="baseService" class="ml-2 font-semibold">基础服务</label>
+                          <span class="ml-auto font-semibold text-primary">¥{{ basePrice }}</span>
                         </div>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                          <div class="md:col-span-1">
-                            <label class="text-xs text-neutral-dark mb-1 block">服务名称</label>
+                        <p class="text-sm text-neutral-dark ml-6">
+                          包含基础拍摄服务，{{ bookingForm.photoCount }}张照片的简单修图。
+                        </p>
+                      </div>
+
+                      <!-- 可选服务列表 -->
+                      <div class="space-y-3">
+                        <div
+                          v-for="(service, index) in availableServices"
+                          :key="index"
+                          class="p-4 border border-neutral rounded-md hover:border-primary transition-colors"
+                        >
+                          <div class="flex items-center mb-2">
                             <input
-                              type="text"
-                              v-model="service.serviceName"
-                              required
-                              placeholder="例如：基本拍摄"
-                              class="w-full px-2 py-1 border border-neutral rounded-md text-sm"
+                              type="checkbox"
+                              :id="`service-${index}`"
+                              v-model="service.selected"
+                              class="h-4 w-4 text-primary border-neutral rounded focus:ring-primary"
                             />
+                            <label :for="`service-${index}`" class="ml-2 font-medium">{{
+                              service.serviceName
+                            }}</label>
+                            <span class="ml-auto font-semibold text-primary"
+                              >+¥{{ service.price }}</span
+                            >
                           </div>
-                          <div class="md:col-span-1">
-                            <label class="text-xs text-neutral-dark mb-1 block">价格 (¥)</label>
-                            <input
-                              type="number"
-                              v-model.number="service.price"
-                              min="0"
-                              required
-                              class="w-full px-2 py-1 border border-neutral rounded-md text-sm"
-                            />
-                          </div>
-                          <div class="md:col-span-3">
-                            <label class="text-xs text-neutral-dark mb-1 block">服务说明</label>
-                            <input
-                              type="text"
-                              v-model="service.description"
-                              placeholder="服务内容简要描述"
-                              class="w-full px-2 py-1 border border-neutral rounded-md text-sm"
-                            />
-                          </div>
+                          <p class="text-sm text-neutral-dark ml-6">{{ service.description }}</p>
                         </div>
                       </div>
-                    </div>
-
-                    <div
-                      v-else
-                      class="text-center border border-dashed border-neutral rounded-md p-6"
-                    >
-                      <p class="text-neutral-dark mb-2">请添加至少一项服务</p>
-                      <button
-                        type="button"
-                        @click="addDefaultServices"
-                        class="text-primary hover:text-green-dark"
-                      >
-                        添加默认服务项
-                      </button>
                     </div>
                   </div>
 
@@ -292,6 +238,12 @@
                       <span class="text-lg font-medium text-neutral-dark">总价:</span>
                       <span class="text-xl font-bold text-primary">¥{{ totalPrice }}</span>
                     </div>
+                    <p class="text-sm text-neutral-dark mt-2">
+                      包含基础服务 (¥{{ basePrice }})
+                      <span v-if="selectedServicesCount > 0">
+                        及 {{ selectedServicesCount }} 项附加服务
+                      </span>
+                    </p>
                   </div>
 
                   <!-- 提交按钮 -->
@@ -338,7 +290,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, computed, onMounted } from 'vue'
+import { defineComponent, ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import SideBar from '../components/SideBar.vue'
 import { photographerAPI } from '../services/apiService'
@@ -349,6 +301,11 @@ interface BookingService {
   serviceName: string
   description: string
   price: number
+}
+
+// 可选服务项目接口
+interface AvailableService extends BookingService {
+  selected: boolean
 }
 
 // 摄影师信息接口
@@ -390,6 +347,52 @@ export default defineComponent({
       priceRangeMax: 0,
     })
 
+    // 预设的可选服务项目
+    const availableServices = ref<AvailableService[]>([
+      {
+        serviceName: '增加额外5张照片',
+        description: '在基础拍摄数量基础上增加5张照片的拍摄和修图',
+        price: 200,
+        selected: false,
+      },
+      {
+        serviceName: '增加拍摄场景',
+        description: '在原有场景基础上，增加一个不同风格的拍摄场景',
+        price: 300,
+        selected: false,
+      },
+      {
+        serviceName: '化妆服务',
+        description: '专业化妆师提供的妆容服务，包含一次造型',
+        price: 400,
+        selected: false,
+      },
+      {
+        serviceName: '服装租赁',
+        description: '提供1-2套拍摄服装的租赁，根据拍摄主题选择',
+        price: 350,
+        selected: false,
+      },
+      {
+        serviceName: '精修照片',
+        description: '针对所有照片进行精细修图，包括肤色调整、瑕疵处理等',
+        price: 500,
+        selected: false,
+      },
+      {
+        serviceName: '加急处理',
+        description: '照片处理时间缩短一半，优先完成',
+        price: 250,
+        selected: false,
+      },
+      {
+        serviceName: '实体相册制作',
+        description: '精选照片制作精美实体相册，赠送电子版',
+        price: 600,
+        selected: false,
+      },
+    ])
+
     // 预约表单数据
     const bookingForm = ref({
       photographerId: photographerId,
@@ -397,13 +400,51 @@ export default defineComponent({
       location: '',
       requirements: '',
       photoCount: 20,
-      services: [] as BookingService[],
+    })
+
+    // 基础价格 - 使用摄影师的最低价
+    const basePrice = computed(() => {
+      return photographerInfo.value.priceRangeMin || 300
+    })
+
+    // 选中的服务项数量
+    const selectedServicesCount = computed(() => {
+      return availableServices.value.filter((service) => service.selected).length
     })
 
     // 计算总价
     const totalPrice = computed(() => {
-      return bookingForm.value.services.reduce((total, service) => total + service.price, 0)
+      // 基础价格 + 所有选中的额外服务价格
+      const addonsPrice = availableServices.value
+        .filter((service) => service.selected)
+        .reduce((total, service) => total + service.price, 0)
+
+      return basePrice.value + addonsPrice
     })
+
+    // 获取最终提交的服务列表
+    const getSelectedServices = (): BookingService[] => {
+      const services: BookingService[] = [
+        {
+          serviceName: '基础拍摄套餐',
+          description: `包含基本拍摄及简单修图，${bookingForm.value.photoCount}张照片`,
+          price: basePrice.value,
+        },
+      ]
+
+      // 添加选中的额外服务
+      availableServices.value
+        .filter((service) => service.selected)
+        .forEach((service) => {
+          services.push({
+            serviceName: service.serviceName,
+            description: service.description,
+            price: service.price,
+          })
+        })
+
+      return services
+    }
 
     // 获取摄影师信息
     const fetchPhotographerInfo = async () => {
@@ -444,40 +485,8 @@ export default defineComponent({
       }
     }
 
-    // 添加服务项目
-    const addService = () => {
-      bookingForm.value.services.push({
-        serviceName: '',
-        description: '',
-        price: 0,
-      })
-    }
-
-    // 添加默认服务
-    const addDefaultServices = () => {
-      const minPrice = photographerInfo.value.priceRangeMin
-      bookingForm.value.services = [
-        {
-          serviceName: '基础拍摄套餐',
-          description: '包含基本拍摄及简单修图',
-          price: minPrice,
-        },
-      ]
-    }
-
-    // 删除服务项目
-    const removeService = (index: number) => {
-      bookingForm.value.services.splice(index, 1)
-    }
-
     // 提交预约
     const submitBooking = async () => {
-      // 表单验证
-      if (bookingForm.value.services.length === 0) {
-        alert('请至少添加一项服务')
-        return
-      }
-
       try {
         isSubmitting.value = true
 
@@ -488,7 +497,7 @@ export default defineComponent({
           location: bookingForm.value.location,
           requirements: bookingForm.value.requirements,
           photoCount: bookingForm.value.photoCount,
-          services: bookingForm.value.services,
+          services: getSelectedServices(), // 获取所有选中的服务
         }
 
         // 发送请求
@@ -557,15 +566,15 @@ export default defineComponent({
     return {
       photographerInfo,
       bookingForm,
+      basePrice,
       totalPrice,
+      availableServices,
+      selectedServicesCount,
       isLoading,
       isSubmitting,
       error,
-      addService,
-      removeService,
       submitBooking,
       goBack,
-      addDefaultServices,
     }
   },
 })

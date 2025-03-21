@@ -147,7 +147,13 @@
             </span>
 
             <!-- 预约指示器 -->
-            <div v-if="hasBooking(date.date)" class="h-2 w-2 rounded-full bg-primary"></div>
+            <div
+              v-if="hasBooking(date.date)"
+              class="h-2 w-2 rounded-full"
+              :class="
+                getCompletedBookingsForDate(date.date).length > 0 ? 'bg-green-200' : 'bg-primary'
+              "
+            ></div>
           </div>
 
           <!-- 预约内容 -->
@@ -155,9 +161,14 @@
             <div
               v-for="(booking, bookingIndex) in getBookingsForDate(date.date)"
               :key="bookingIndex"
-              class="text-xs py-0.5 px-1.5 mb-1 rounded truncate bg-primary bg-opacity-10 text-primary border-l-2 border-primary"
+              class="text-xs py-0.5 px-1.5 mb-1 rounded truncate border-l-2"
+              :class="[
+                booking.status === 'Completed'
+                  ? 'bg-green-100 text-green-800 border-green-300'
+                  : 'bg-primary bg-opacity-10 text-primary border-primary',
+              ]"
             >
-              {{ booking.title }}
+              {{ booking.photographerName }}
             </div>
           </div>
         </div>
@@ -168,7 +179,11 @@
     <div class="flex justify-end items-center mt-4">
       <div class="flex items-center text-xs text-neutral-dark">
         <span class="inline-block h-3 w-3 rounded-full bg-primary mr-1"></span>
-        有预约
+        待处理预约
+      </div>
+      <div class="flex items-center text-xs text-neutral-dark ml-4">
+        <span class="inline-block h-3 w-3 rounded-full bg-green-200 mr-1"></span>
+        已完成预约
       </div>
       <div class="flex items-center text-xs text-neutral-dark ml-4">
         <span class="inline-block h-3 w-3 rounded-full bg-green-light mr-1"></span>
@@ -179,11 +194,25 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, computed, watch } from 'vue'
+import { defineComponent, ref, computed, watch, PropType } from 'vue'
+
+interface Booking {
+  bookingId: number
+  photographerName: string
+  bookingDate: string
+  status: string
+  // ...other properties
+}
 
 export default defineComponent({
   name: 'BookingCalendar',
-  setup() {
+  props: {
+    bookings: {
+      type: Array as PropType<Booking[]>,
+      default: () => [],
+    },
+  },
+  setup(props) {
     // 当前日期和月份
     const currentDate = ref(new Date())
     const showMonthPicker = ref(false)
@@ -305,44 +334,30 @@ export default defineComponent({
       )
     }
 
-    // 模拟预约数据
-    const bookings = ref([
-      {
-        id: 1,
-        title: '人像写真',
-        date: '2025-03-10',
-        time: '14:00-16:00',
-      },
-      {
-        id: 2,
-        title: '产品样片',
-        date: '2025-03-10',
-        time: '09:30-11:30',
-      },
-      {
-        id: 3,
-        title: '婚纱外景',
-        date: '2025-03-20',
-        time: '15:00-18:00',
-      },
-      {
-        id: 4,
-        title: '时尚写真',
-        date: '2025-03-15',
-        time: '13:00-15:00',
-      },
-    ])
-
     // 检查日期是否有预约
     const hasBooking = (date: Date) => {
       const dateString = formatDate(date)
-      return bookings.value.some((booking) => booking.date === dateString)
+      return props.bookings.some(
+        (booking: Booking) => formatDate(new Date(booking.bookingDate)) === dateString,
+      )
     }
 
     // 获取日期的预约
     const getBookingsForDate = (date: Date) => {
       const dateString = formatDate(date)
-      return bookings.value.filter((booking) => booking.date === dateString)
+      return props.bookings.filter(
+        (booking: Booking) => formatDate(new Date(booking.bookingDate)) === dateString,
+      )
+    }
+
+    // 获取日期的已完成预约
+    const getCompletedBookingsForDate = (date: Date) => {
+      const dateString = formatDate(date)
+      return props.bookings.filter(
+        (booking: Booking) =>
+          formatDate(new Date(booking.bookingDate)) === dateString &&
+          booking.status === 'Completed',
+      )
     }
 
     // 日期格式化函数
@@ -386,6 +401,7 @@ export default defineComponent({
       isToday,
       hasBooking,
       getBookingsForDate,
+      getCompletedBookingsForDate,
     }
   },
 })

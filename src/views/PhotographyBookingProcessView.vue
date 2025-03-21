@@ -106,7 +106,7 @@
               <div class="flex flex-wrap gap-3">
                 <button
                   v-if="canAccept"
-                  @click="updateStatus('Processing')"
+                  @click="updateStatus('InProgress')"
                   class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
                 >
                   接受预约

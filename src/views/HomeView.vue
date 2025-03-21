@@ -22,64 +22,89 @@
         <div class="max-w-7xl mx-auto">
           <h1 class="text-2xl font-semibold text-neutral-dark mb-6">预约日历</h1>
 
-          <!-- 日历组件 -->
-          <div class="bg-white rounded-lg shadow p-6">
-            <BookingCalendar />
+          <!-- 加载状态 -->
+          <div v-if="loading" class="flex justify-center py-12">
+            <div class="text-center">
+              <div
+                class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"
+              ></div>
+              <p class="mt-4 text-neutral-dark">正在加载预约数据...</p>
+            </div>
           </div>
 
-          <!-- 可选的其他内容区域 -->
-          <div class="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <!-- 最近预约 -->
+          <!-- 错误状态 -->
+          <div v-else-if="error" class="bg-white rounded-lg shadow-md p-6 text-center">
+            <div class="text-error text-lg mb-3">加载失败</div>
+            <p class="text-neutral-dark mb-6">{{ error }}</p>
+            <button
+              @click="fetchBookings"
+              class="px-4 py-2 bg-primary text-white rounded-md hover:bg-green-dark transition-colors"
+            >
+              重新加载
+            </button>
+          </div>
+
+          <div v-else>
+            <!-- 日历组件 -->
             <div class="bg-white rounded-lg shadow p-6">
-              <h2 class="text-lg font-medium text-neutral-dark mb-4">最近预约</h2>
-              <div class="space-y-4">
-                <div
-                  v-for="booking in recentBookings"
-                  :key="booking.id"
-                  class="p-4 border-l-4 rounded-r-md"
-                  :class="{
-                    'border-primary bg-green-light bg-opacity-10': booking.status === 'confirmed',
-                    'border-warning bg-warning bg-opacity-10': booking.status === 'pending',
-                  }"
-                >
-                  <div class="flex justify-between">
-                    <p class="font-medium">{{ booking.title }}</p>
-                    <span
-                      class="text-sm"
-                      :class="{
-                        'text-primary': booking.status === 'confirmed',
-                        'text-warning': booking.status === 'pending',
-                      }"
-                    >
-                      {{ booking.statusText }}
-                    </span>
-                  </div>
-                  <p class="text-sm text-neutral-dark mt-1">
-                    {{ booking.date }} {{ booking.time }}
-                  </p>
-                  <p class="text-sm text-neutral-dark">地点: {{ booking.location }}</p>
-                </div>
-              </div>
+              <BookingCalendar :bookings="bookings" />
             </div>
 
-            <!-- 推荐摄影师 -->
-            <div class="bg-white rounded-lg shadow p-6">
-              <h2 class="text-lg font-medium text-neutral-dark mb-4">推荐摄影师</h2>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div
-                  v-for="photographer in recommendedPhotographers"
-                  :key="photographer.id"
-                  class="flex items-center space-x-4 p-3 rounded-md hover:bg-green-light hover:bg-opacity-10 cursor-pointer"
-                >
-                  <img
-                    :src="photographer.avatar"
-                    :alt="photographer.name"
-                    class="w-12 h-12 rounded-full object-cover border border-green-light"
-                  />
-                  <div>
-                    <p class="font-medium text-neutral-dark">{{ photographer.name }}</p>
-                    <p class="text-sm text-green-dark">{{ photographer.speciality }}</p>
+            <!-- 最近预约 -->
+            <div class="mt-8">
+              <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-lg font-medium text-neutral-dark mb-4">最近预约</h2>
+                <div v-if="bookings.length > 0" class="space-y-4">
+                  <div
+                    v-for="booking in sortedBookings"
+                    :key="booking.bookingId"
+                    class="p-4 border-l-4 rounded-r-md"
+                    :class="{
+                      'border-primary bg-green-light bg-opacity-10':
+                        booking.status === 'Processing',
+                      'border-warning bg-warning bg-opacity-10': booking.status === 'Pending',
+                      'border-green-300 bg-green-100': booking.status === 'Completed',
+                      'border-red-300 bg-red-100': booking.status === 'Cancelled',
+                    }"
+                  >
+                    <div class="flex justify-between">
+                      <p class="font-medium text-primary">
+                        与 {{ booking.photographerName }} 的预约
+                      </p>
+                      <span
+                        class="text-sm"
+                        :class="{
+                          'text-primary': booking.status === 'Processing',
+                          'text-warning': booking.status === 'Pending',
+                          'text-green-600': booking.status === 'Completed',
+                          'text-red-600': booking.status === 'Cancelled',
+                        }"
+                      >
+                        {{ getStatusText(booking.status) }}
+                      </span>
+                    </div>
+                    <p class="text-sm text-neutral-dark mt-1">
+                      {{ formatDate(booking.bookingDate) }}
+                    </p>
+                    <p class="text-sm text-neutral-dark">地点: {{ booking.location }}</p>
+                    <div class="mt-2 flex justify-end">
+                      <router-link
+                        :to="`/photography-booking/${booking.bookingId}`"
+                        class="text-primary hover:text-green-dark text-sm"
+                      >
+                        查看详情
+                      </router-link>
+                    </div>
                   </div>
+                </div>
+                <div v-else class="text-center py-12">
+                  <div class="text-neutral-dark mb-4">您还没有任何摄影预约</div>
+                  <router-link
+                    to="/photography-service"
+                    class="px-6 py-2 bg-primary text-white rounded-md hover:bg-green-dark transition-colors"
+                  >
+                    去寻找摄影师
+                  </router-link>
                 </div>
               </div>
             </div>
@@ -91,10 +116,11 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref } from 'vue'
+import { defineComponent, ref, computed, onMounted } from 'vue'
 import SideBar from '../components/SideBar.vue'
 import UserProfileCard from '../components/UserProfileCard.vue'
 import BookingCalendar from '../components/BookingCalendar.vue'
+import apiClient from '../services/apiService'
 
 export default defineComponent({
   name: 'HomeView',
@@ -104,68 +130,77 @@ export default defineComponent({
     BookingCalendar,
   },
   setup() {
-    // 最近预约数据
-    const recentBookings = ref([
-      {
-        id: 1,
-        title: '人像写真拍摄',
-        date: '2025-03-10',
-        time: '14:00-16:00',
-        location: '市中心摄影基地',
-        status: 'confirmed',
-        statusText: '已确认',
-      },
-      {
-        id: 2,
-        title: '产品样片拍摄',
-        date: '2025-03-15',
-        time: '09:30-11:30',
-        location: '阳光工作室',
-        status: 'pending',
-        statusText: '待确认',
-      },
-      {
-        id: 3,
-        title: '婚纱照外景',
-        date: '2025-03-20',
-        time: '15:00-18:00',
-        location: '海滨公园',
-        status: 'confirmed',
-        statusText: '已确认',
-      },
-    ])
+    const bookings = ref<any[]>([])
+    const loading = ref(true)
+    const error = ref('')
 
-    // 推荐摄影师数据
-    const recommendedPhotographers = ref([
-      {
-        id: 1,
-        name: '王明',
-        speciality: '人像摄影',
-        avatar: '/api/placeholder/80/80',
-      },
-      {
-        id: 2,
-        name: '李梅',
-        speciality: '风景摄影',
-        avatar: '/api/placeholder/80/80',
-      },
-      {
-        id: 3,
-        name: '张伟',
-        speciality: '产品摄影',
-        avatar: '/api/placeholder/80/80',
-      },
-      {
-        id: 4,
-        name: '赵琳',
-        speciality: '婚纱摄影',
-        avatar: '/api/placeholder/80/80',
-      },
-    ])
+    // 获取状态文字
+    const getStatusText = (status: string): string => {
+      switch (status) {
+        case 'Pending':
+          return '待确认'
+        case 'Processing':
+          return '已确认'
+        case 'Completed':
+          return '已完成'
+        case 'Cancelled':
+          return '已取消'
+        default:
+          return status
+      }
+    }
+
+    // 格式化日期
+    const formatDate = (dateString: string): string => {
+      if (!dateString) return '未设置'
+      const date = new Date(dateString)
+      return new Intl.DateTimeFormat('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+      }).format(date)
+    }
+
+    // 按日期排序的预约列表
+    const sortedBookings = computed(() => {
+      return [...bookings.value].sort((a, b) => {
+        return new Date(a.bookingDate).getTime() - new Date(b.bookingDate).getTime()
+      })
+    })
+
+    // 获取预约数据
+    const fetchBookings = async () => {
+      loading.value = true
+      error.value = ''
+
+      try {
+        console.log('正在获取用户摄影预约...')
+        const response = await apiClient.get('/Booking/user')
+        bookings.value = response.data
+        console.log(`获取到${bookings.value.length}条摄影预约:`, bookings.value)
+      } catch (err: any) {
+        console.error('获取摄影预约失败:', err)
+        error.value = '获取预约数据失败，请稍后再试'
+        bookings.value = []
+      } finally {
+        loading.value = false
+      }
+    }
+
+    onMounted(() => {
+      fetchBookings()
+    })
 
     return {
-      recentBookings,
-      recommendedPhotographers,
+      bookings,
+      loading,
+      error,
+      getStatusText,
+      formatDate,
+      sortedBookings,
+      fetchBookings,
     }
   },
 })
