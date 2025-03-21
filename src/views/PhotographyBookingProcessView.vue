@@ -106,7 +106,7 @@
               <div class="flex flex-wrap gap-3">
                 <button
                   v-if="canAccept"
-                  @click="updateStatus('InProgress')"
+                  @click="updateStatus('Confirmed')"
                   class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
                 >
                   接受预约
@@ -119,11 +119,170 @@
                   拒绝预约
                 </button>
                 <button
+                  v-if="canStartProcess"
+                  @click="updateStatus('InProgress')"
+                  class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                >
+                  开始拍摄
+                </button>
+                <button
                   v-if="canComplete"
-                  @click="updateStatus('Completed')"
+                  @click="showCompletionForm = true"
                   class="px-4 py-2 bg-primary text-white rounded-md hover:bg-green-dark transition-colors"
                 >
                   完成预约
+                </button>
+              </div>
+            </div>
+
+            <!-- 完成预约表单 - 上传照片 -->
+            <div v-if="showCompletionForm" class="mb-6 border border-neutral p-4 rounded-md">
+              <h3 class="text-lg font-semibold text-neutral-dark mb-4">上传照片</h3>
+              <p class="text-sm text-neutral-dark mb-4">
+                请上传拍摄的照片，客户将可以在订单完成后查看这些照片。
+              </p>
+
+              <div class="mb-4">
+                <label class="block text-neutral-dark mb-2">照片（可多选）</label>
+                <div
+                  class="border-2 border-dashed border-neutral p-6 rounded-md text-center cursor-pointer"
+                  @click="triggerFileInput"
+                  @dragover.prevent
+                  @drop.prevent="handleFileDrop"
+                >
+                  <div v-if="selectedFiles.length === 0">
+                    <svg
+                      class="mx-auto h-12 w-12 text-neutral-light"
+                      stroke="currentColor"
+                      fill="none"
+                      viewBox="0 0 48 48"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                    <p class="mt-2 text-sm text-neutral-dark">
+                      点击或拖放文件到此处上传 (仅支持 .jpg, .png 格式)
+                    </p>
+                    <p class="text-xs text-neutral-dark mt-1">
+                      最多可上传{{ bookingDetails.photoCount }}张照片
+                    </p>
+                  </div>
+                  <div v-else class="text-left">
+                    <h4 class="text-neutral-dark font-medium mb-2">
+                      已选择{{ selectedFiles.length }}张照片
+                    </h4>
+                    <ul class="space-y-2 max-h-40 overflow-y-auto">
+                      <li
+                        v-for="(file, index) in selectedFiles"
+                        :key="index"
+                        class="flex items-center"
+                      >
+                        <svg
+                          class="h-5 w-5 text-green-600 mr-2"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
+                        <span class="text-sm text-neutral-dark">{{ file.name }}</span>
+                        <button
+                          type="button"
+                          @click.stop="removeFile(index)"
+                          class="ml-2 text-red-600 hover:text-red-800 text-sm"
+                        >
+                          移除
+                        </button>
+                      </li>
+                    </ul>
+                    <div v-if="selectedFiles.length < bookingDetails.photoCount" class="mt-3">
+                      <button
+                        @click.stop="triggerFileInput"
+                        class="text-sm text-primary hover:text-green-dark"
+                      >
+                        添加更多照片
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <input
+                  type="file"
+                  ref="fileInput"
+                  class="hidden"
+                  accept="image/jpeg,image/png"
+                  multiple
+                  @change="handleFileSelect"
+                />
+              </div>
+
+              <div class="mb-4">
+                <label class="block text-neutral-dark mb-2">备注信息</label>
+                <textarea
+                  v-model="completionComment"
+                  class="w-full px-3 py-2 border border-neutral rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  rows="3"
+                  placeholder="可以添加拍摄过程中的备注信息，例如特殊要求如何实现、天气情况等..."
+                ></textarea>
+              </div>
+
+              <!-- 新增公开设置 -->
+              <div class="mb-4 flex items-center">
+                <input
+                  id="isPublic"
+                  type="checkbox"
+                  v-model="isPublic"
+                  class="h-4 w-4 text-primary focus:ring-green-400 border-neutral rounded"
+                />
+                <label for="isPublic" class="ml-2 block text-sm text-neutral-dark">
+                  将这些照片设为公开
+                </label>
+              </div>
+
+              <div class="mb-3 text-sm text-neutral-dark">
+                <div class="flex items-start">
+                  <span class="text-primary mr-2">•</span>
+                  上传的照片将作为拍摄成果交付给客户
+                </div>
+                <div class="flex items-start">
+                  <span class="text-primary mr-2">•</span>
+                  请确保照片质量良好，符合客户预期
+                </div>
+                <div class="flex items-start">
+                  <span class="text-primary mr-2">•</span>
+                  完成预约后，客户将可以查看和下载这些照片
+                </div>
+              </div>
+
+              <div class="flex justify-end space-x-3 mt-4">
+                <button
+                  type="button"
+                  @click="showCompletionForm = false"
+                  class="px-4 py-2 border border-neutral text-neutral-dark rounded-md hover:bg-neutral-light transition-colors"
+                >
+                  取消
+                </button>
+                <button
+                  type="button"
+                  @click="completeBookingWithPhotos"
+                  :disabled="selectedFiles.length === 0"
+                  :class="[
+                    'px-4 py-2 rounded-md transition-colors',
+                    selectedFiles.length > 0
+                      ? 'bg-primary text-white hover:bg-green-dark'
+                      : 'bg-neutral-light text-neutral-dark cursor-not-allowed',
+                  ]"
+                >
+                  提交并完成预约
                 </button>
               </div>
             </div>
@@ -211,7 +370,13 @@
                     摄影师确认
                   </div>
                   <div class="text-sm text-neutral-dark">
-                    {{ bookingDetails.status !== 'Pending' ? '已确认' : '等待中' }}
+                    {{
+                      bookingDetails.status === 'Pending'
+                        ? '等待中'
+                        : bookingDetails.status === 'Cancelled' && previousStatus === 'Pending'
+                          ? '已拒绝'
+                          : '已确认'
+                    }}
                   </div>
                 </div>
 
@@ -220,7 +385,7 @@
                   <div
                     class="absolute left-0 -translate-x-1/2 w-4 h-4 rounded-full"
                     :class="
-                      bookingDetails.status === 'Processing' ||
+                      bookingDetails.status === 'InProgress' ||
                       bookingDetails.status === 'Completed'
                         ? 'bg-primary'
                         : 'bg-neutral'
@@ -229,16 +394,21 @@
                   <div
                     class="mb-1 font-medium"
                     :class="
-                      bookingDetails.status === 'Processing' ||
+                      bookingDetails.status === 'InProgress' ||
                       bookingDetails.status === 'Completed'
                         ? 'text-neutral-dark'
                         : 'text-neutral'
                     "
                   >
-                    拍摄日期
+                    开始拍摄
                   </div>
                   <div class="text-sm text-neutral-dark">
-                    {{ formatDate(bookingDetails.bookingDate) }}
+                    {{
+                      bookingDetails.status === 'InProgress' ||
+                      bookingDetails.status === 'Completed'
+                        ? formatDate(bookingDetails.bookingDate)
+                        : '等待中'
+                    }}
                   </div>
                 </div>
 
@@ -262,6 +432,17 @@
                         ? formatDate(bookingDetails.updatedAt)
                         : '等待中'
                     }}
+                  </div>
+                </div>
+
+                <!-- 取消状态 (仅在订单已取消时显示) -->
+                <div v-if="bookingDetails.status === 'Cancelled'" class="relative mt-6 pl-8">
+                  <div
+                    class="absolute left-0 -translate-x-1/2 w-4 h-4 rounded-full bg-red-500"
+                  ></div>
+                  <div class="mb-1 font-medium text-red-500">预约已取消</div>
+                  <div class="text-sm text-neutral-dark">
+                    {{ formatDate(bookingDetails.updatedAt) }}
                   </div>
                 </div>
               </div>
@@ -359,6 +540,7 @@ export default defineComponent({
     const bookingDetails = ref<any>(null)
     const loading = ref(true)
     const error = ref('')
+    const previousStatus = ref<string>('')
 
     // 计算属性 - 是否是户外拍摄
     const isOutdoorShoot = computed(() => {
@@ -389,11 +571,18 @@ export default defineComponent({
     })
 
     const canReject = computed(() => {
-      return bookingDetails.value && bookingDetails.value.status === 'Pending'
+      return (
+        bookingDetails.value &&
+        (bookingDetails.value.status === 'Pending' || bookingDetails.value.status === 'Confirmed')
+      )
+    })
+
+    const canStartProcess = computed(() => {
+      return bookingDetails.value && bookingDetails.value.status === 'Confirmed'
     })
 
     const canComplete = computed(() => {
-      return bookingDetails.value && bookingDetails.value.status === 'Processing'
+      return bookingDetails.value && bookingDetails.value.status === 'InProgress'
     })
 
     // 获取预约状态对应的CSS类
@@ -401,7 +590,9 @@ export default defineComponent({
       switch (status) {
         case 'Pending':
           return 'bg-yellow-100 text-yellow-800'
-        case 'Processing':
+        case 'Confirmed':
+          return 'bg-green-100 text-green-800'
+        case 'InProgress':
           return 'bg-blue-100 text-blue-800'
         case 'Completed':
           return 'bg-green-100 text-green-800'
@@ -417,8 +608,10 @@ export default defineComponent({
       switch (status) {
         case 'Pending':
           return '待确认'
-        case 'Processing':
+        case 'Confirmed':
           return '已确认'
+        case 'InProgress':
+          return '拍摄中'
         case 'Completed':
           return '已完成'
         case 'Cancelled':
@@ -449,6 +642,10 @@ export default defineComponent({
       try {
         console.log(`正在获取摄影预约详情，预约ID: ${bookingId.value}`)
         const response = await apiClient.get(`/Booking/${bookingId.value}`)
+        // 保存前一个状态，用于UI展示
+        if (bookingDetails.value) {
+          previousStatus.value = bookingDetails.value.status
+        }
         bookingDetails.value = response.data
         console.log('获取到预约详情:', bookingDetails.value)
       } catch (err: any) {
@@ -463,10 +660,16 @@ export default defineComponent({
     const updateStatus = async (newStatus: string) => {
       if (!bookingDetails.value) return
 
+      // 如果是完成操作，显示上传表单而不是直接更新状态
+      if (newStatus === 'Completed') {
+        showCompletionForm.value = true
+        return
+      }
+
       const confirmMessages = {
-        Processing: '确认接受此预约吗？',
-        Cancelled: '确认拒绝此预约吗？',
-        Completed: '确认将预约标记为已完成吗？',
+        Confirmed: '确认接受此预约吗？',
+        InProgress: '确认开始拍摄吗？',
+        Cancelled: '确认取消此预约吗？',
       }
 
       if (!confirm(confirmMessages[newStatus as keyof typeof confirmMessages])) {
@@ -477,6 +680,7 @@ export default defineComponent({
 
       try {
         console.log(`正在更新预约 ${bookingId.value} 状态为: ${newStatus}`)
+        previousStatus.value = bookingDetails.value.status // 保存前一个状态
         await apiClient.put(`/Booking/${bookingId.value}/status`, { status: newStatus })
 
         console.log('预约状态更新成功')
@@ -493,6 +697,145 @@ export default defineComponent({
       }
     }
 
+    // 照片上传相关
+    const showCompletionForm = ref(false)
+    const fileInput = ref<HTMLInputElement | null>(null)
+    const selectedFiles = ref<File[]>([])
+    const completionComment = ref('')
+    const isPublic = ref(false) // 新增照片公开设置
+    const uploadStatus = ref<'idle' | 'uploading' | 'success' | 'error'>('idle')
+
+    // 文件上传相关方法
+    const triggerFileInput = () => {
+      if (fileInput.value) {
+        fileInput.value.click()
+      }
+    }
+
+    const handleFileSelect = (event: Event) => {
+      const target = event.target as HTMLInputElement
+      if (target.files && target.files.length > 0) {
+        const newFiles = Array.from(target.files)
+
+        // 验证文件类型
+        const validFiles = newFiles.filter((file) => validateImageFile(file))
+
+        // 只添加有效文件
+        if (validFiles.length > 0) {
+          // 确保不超过预约要求的照片数量
+          const totalFiles = [...selectedFiles.value, ...validFiles]
+          if (totalFiles.length > (bookingDetails.value?.photoCount || 10)) {
+            alert(`最多只能上传${bookingDetails.value?.photoCount || 10}张照片`)
+            selectedFiles.value = totalFiles.slice(0, bookingDetails.value?.photoCount || 10)
+          } else {
+            selectedFiles.value = totalFiles
+          }
+        }
+
+        // 提示如果有无效文件
+        if (validFiles.length < newFiles.length) {
+          alert('部分文件格式不支持，已过滤。仅支持JPG和PNG格式')
+        }
+
+        // 重置input以便下次选择同样的文件
+        target.value = ''
+      }
+    }
+
+    const handleFileDrop = (event: DragEvent) => {
+      if (event.dataTransfer?.files && event.dataTransfer.files.length > 0) {
+        const newFiles = Array.from(event.dataTransfer.files)
+
+        // 验证文件类型
+        const validFiles = newFiles.filter((file) => validateImageFile(file))
+
+        // 只添加有效文件
+        if (validFiles.length > 0) {
+          // 确保不超过预约要求的照片数量
+          const totalFiles = [...selectedFiles.value, ...validFiles]
+          if (totalFiles.length > (bookingDetails.value?.photoCount || 10)) {
+            alert(`最多只能上传${bookingDetails.value?.photoCount || 10}张照片`)
+            selectedFiles.value = totalFiles.slice(0, bookingDetails.value?.photoCount || 10)
+          } else {
+            selectedFiles.value = totalFiles
+          }
+        }
+
+        // 提示如果有无效文件
+        if (validFiles.length < newFiles.length) {
+          alert('部分文件格式不支持，已过滤。仅支持JPG和PNG格式')
+        }
+      }
+    }
+
+    const validateImageFile = (file: File): boolean => {
+      const validTypes = ['image/jpeg', 'image/png']
+      return validTypes.includes(file.type)
+    }
+
+    const removeFile = (index: number) => {
+      selectedFiles.value.splice(index, 1)
+    }
+
+    // 完成预约并上传照片
+    const completeBookingWithPhotos = async () => {
+      if (selectedFiles.value.length === 0) {
+        alert('请至少上传一张照片')
+        return
+      }
+
+      try {
+        loading.value = true
+        uploadStatus.value = 'uploading'
+
+        // 第一步：批量上传照片
+        // 创建FormData对象用于提交照片
+        const formData = new FormData()
+
+        // 添加请求信息
+        formData.append('request.BookingId', bookingId.value)
+        formData.append('request.IsPublic', isPublic.value.toString())
+
+        // 添加所有照片文件
+        selectedFiles.value.forEach((file) => {
+          formData.append('files', file)
+        })
+
+        console.log(`正在上传照片，数量: ${selectedFiles.value.length}, 公开: ${isPublic.value}`)
+
+        // 批量上传照片
+        const uploadResponse = await apiClient.post('/Photo/batch-upload', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        })
+
+        console.log('照片上传成功:', uploadResponse.data)
+        uploadStatus.value = 'success'
+
+        // 第二步：更新预约状态为已完成
+        await apiClient.put(`/Booking/${bookingId.value}/status`, {
+          status: 'Completed',
+          comment: completionComment.value || '拍摄已完成，照片已上传',
+        })
+
+        console.log('预约状态已更新为已完成')
+
+        alert('照片上传成功，预约已完成')
+
+        // 更新状态和UI
+        showCompletionForm.value = false
+        bookingDetails.value.status = 'Completed'
+
+        // 重新获取最新数据
+        await fetchBookingDetails()
+      } catch (err) {
+        console.error('完成预约失败:', err)
+        uploadStatus.value = 'error'
+        alert('完成预约失败，请稍后重试')
+      } finally {
+        loading.value = false
+      }
+    }
+
     onMounted(() => {
       fetchBookingDetails()
     })
@@ -504,12 +847,25 @@ export default defineComponent({
       isOutdoorShoot,
       canAccept,
       canReject,
+      canStartProcess,
       canComplete,
       getStatusClass,
       getStatusText,
       formatDate,
       fetchBookingDetails,
       updateStatus,
+      previousStatus,
+      showCompletionForm,
+      fileInput,
+      selectedFiles,
+      completionComment,
+      triggerFileInput,
+      handleFileSelect,
+      handleFileDrop,
+      removeFile,
+      completeBookingWithPhotos,
+      isPublic,
+      uploadStatus,
     }
   },
 })
