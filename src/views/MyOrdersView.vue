@@ -104,6 +104,11 @@
                           <th
                             class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
                           >
+                            支付状态
+                          </th>
+                          <th
+                            class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
+                          >
                             操作
                           </th>
                         </tr>
@@ -131,6 +136,19 @@
                             >
                               {{ getStatusText(order.status) }}
                             </span>
+                          </td>
+                          <td class="px-6 py-4 whitespace-nowrap">
+                            <button
+                              v-if="order.status === 'Completed' && !order.isPaid"
+                              @click="openPaymentModal('RetouchOrder', order.orderId, order.price)"
+                              class="px-2 py-1 bg-primary text-white text-xs rounded hover:bg-green-dark transition-colors"
+                            >
+                              去支付
+                            </button>
+                            <span v-else-if="order.isPaid" class="text-sm text-green-600"
+                              >已支付</span
+                            >
+                            <span v-else class="text-sm text-neutral-dark">-</span>
                           </td>
                           <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-dark">
                             <button
@@ -191,6 +209,11 @@
                           <th
                             class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
                           >
+                            支付状态
+                          </th>
+                          <th
+                            class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
+                          >
                             操作
                           </th>
                         </tr>
@@ -218,6 +241,25 @@
                             >
                               {{ getStatusText(booking.status) }}
                             </span>
+                          </td>
+                          <td class="px-6 py-4 whitespace-nowrap">
+                            <button
+                              v-if="booking.status === 'Completed' && !booking.isPaid"
+                              @click="
+                                openPaymentModal(
+                                  'Booking',
+                                  booking.bookingId,
+                                  booking.initialAmount,
+                                )
+                              "
+                              class="px-2 py-1 bg-primary text-white text-xs rounded hover:bg-green-dark transition-colors"
+                            >
+                              去支付
+                            </button>
+                            <span v-else-if="booking.isPaid" class="text-sm text-green-600"
+                              >已支付</span
+                            >
+                            <span v-else class="text-sm text-neutral-dark">-</span>
                           </td>
                           <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-dark">
                             <button
@@ -279,6 +321,11 @@
                             <th
                               class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
                             >
+                              支付状态
+                            </th>
+                            <th
+                              class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
+                            >
                               操作
                             </th>
                           </tr>
@@ -308,6 +355,15 @@
                               >
                                 {{ getStatusText(order.status) }}
                               </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                              <span v-if="order.isPaid" class="text-sm text-green-600">已支付</span>
+                              <span
+                                v-else-if="order.status === 'Completed'"
+                                class="text-sm text-yellow-600"
+                                >等待支付</span
+                              >
+                              <span v-else class="text-sm text-neutral-dark">-</span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-dark">
                               <button
@@ -379,6 +435,11 @@
                             <th
                               class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
                             >
+                              支付状态
+                            </th>
+                            <th
+                              class="px-6 py-3 text-left text-xs font-medium text-neutral-dark uppercase tracking-wider"
+                            >
                               操作
                             </th>
                           </tr>
@@ -408,6 +469,17 @@
                               >
                                 {{ getStatusText(booking.status) }}
                               </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                              <span v-if="booking.isPaid" class="text-sm text-green-600"
+                                >已支付</span
+                              >
+                              <span
+                                v-else-if="booking.status === 'Completed'"
+                                class="text-sm text-yellow-600"
+                                >等待支付</span
+                              >
+                              <span v-else class="text-sm text-neutral-dark">-</span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-neutral-dark">
                               <button
@@ -445,6 +517,78 @@
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 支付方式选择模态框 -->
+  <div
+    v-if="showPaymentModal"
+    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+  >
+    <div class="bg-white rounded-lg p-6 w-full max-w-md">
+      <h3 class="text-lg font-semibold text-neutral-dark mb-4">选择支付方式</h3>
+
+      <!-- 订单信息 -->
+      <div class="mb-6 p-4 bg-neutral-light bg-opacity-50 rounded-md">
+        <div class="flex justify-between mb-2">
+          <span class="text-neutral-dark">订单类型：</span>
+          <span class="font-medium">{{
+            paymentDetails.orderType === 'Booking' ? '摄影预约' : '修图订单'
+          }}</span>
+        </div>
+        <div class="flex justify-between mb-2">
+          <span class="text-neutral-dark">订单编号：</span>
+          <span class="font-medium">{{ paymentDetails.orderId }}</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-neutral-dark">支付金额：</span>
+          <span class="font-medium text-primary">¥{{ paymentDetails.amount }}</span>
+        </div>
+      </div>
+
+      <!-- 支付方式选择 -->
+      <div class="mb-6">
+        <div class="text-sm text-neutral-dark mb-2">请选择支付方式：</div>
+        <div class="grid grid-cols-2 gap-3">
+          <button
+            v-for="method in paymentMethods"
+            :key="method.value"
+            @click="selectPaymentMethod(method.value)"
+            :class="[
+              'flex items-center justify-center p-3 border rounded-md',
+              selectedPaymentMethod === method.value
+                ? 'border-primary bg-green-50'
+                : 'border-neutral hover:border-primary',
+            ]"
+          >
+            <span class="mr-2">{{ method.icon }}</span>
+            <span>{{ method.label }}</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 操作按钮 -->
+      <div class="flex justify-end space-x-3">
+        <button
+          @click="closePaymentModal"
+          class="px-4 py-2 border border-neutral text-neutral-dark rounded-md hover:bg-neutral-light transition-colors"
+        >
+          取消
+        </button>
+        <button
+          @click="createPayment"
+          :disabled="!selectedPaymentMethod || isProcessingPayment"
+          :class="[
+            'px-4 py-2 rounded-md transition-colors',
+            selectedPaymentMethod && !isProcessingPayment
+              ? 'bg-primary text-white hover:bg-green-dark'
+              : 'bg-neutral-light text-neutral-dark cursor-not-allowed',
+          ]"
+        >
+          <span v-if="isProcessingPayment">处理中...</span>
+          <span v-else>确认支付</span>
+        </button>
       </div>
     </div>
   </div>
@@ -574,6 +718,13 @@ export default defineComponent({
             retouchOrdersPlaced.value,
           )
           allTabs.value[0].count = retouchOrdersPlaced.value.length
+
+          // 获取每个修图订单的支付状态
+          await Promise.all(
+            retouchOrdersPlaced.value.map((order) =>
+              fetchOrderPaymentStatus('RetouchOrder', order.orderId, order),
+            ),
+          )
         } catch (err) {
           console.error('获取修图订单失败:', err)
           retouchOrdersPlaced.value = []
@@ -590,6 +741,13 @@ export default defineComponent({
             photographyOrdersPlaced.value,
           )
           allTabs.value[1].count = photographyOrdersPlaced.value.length
+
+          // 获取每个摄影预约的支付状态
+          await Promise.all(
+            photographyOrdersPlaced.value.map((booking) =>
+              fetchOrderPaymentStatus('Booking', booking.bookingId, booking),
+            ),
+          )
         } catch (err) {
           console.error('获取摄影预约失败:', err)
           photographyOrdersPlaced.value = []
@@ -607,6 +765,13 @@ export default defineComponent({
               retouchOrdersReceived.value,
             )
             allTabs.value[2].count = retouchOrdersReceived.value.length
+
+            // 获取每个收到的修图订单的支付状态
+            await Promise.all(
+              retouchOrdersReceived.value.map((order) =>
+                fetchOrderPaymentStatus('RetouchOrder', order.orderId, order),
+              ),
+            )
           } catch (err) {
             console.error('获取修图师收到的订单失败:', err)
             retouchOrdersReceived.value = []
@@ -625,6 +790,13 @@ export default defineComponent({
               photographyOrdersReceived.value,
             )
             allTabs.value[3].count = photographyOrdersReceived.value.length
+
+            // 获取每个收到的摄影预约的支付状态
+            await Promise.all(
+              photographyOrdersReceived.value.map((booking) =>
+                fetchOrderPaymentStatus('Booking', booking.bookingId, booking),
+              ),
+            )
           } catch (err) {
             console.error('获取摄影师收到的预约失败:', err)
             photographyOrdersReceived.value = []
@@ -636,6 +808,27 @@ export default defineComponent({
         error.value = '获取订单数据失败，请稍后再试'
       } finally {
         loading.value = false
+      }
+    }
+
+    // 获取单个订单的支付状态
+    const fetchOrderPaymentStatus = async (orderType: string, orderId: number, orderObj: any) => {
+      try {
+        const response = await apiClient.get(`/Payment/order/${orderType}/${orderId}`)
+        const payments = response.data
+
+        // 检查是否有已完成的支付
+        const hasCompletedPayment = payments.some((payment: any) => payment.status === 'Completed')
+
+        // 更新订单对象的支付状态
+        orderObj.isPaid = hasCompletedPayment
+
+        return hasCompletedPayment
+      } catch (err) {
+        console.error(`获取订单 ${orderType}/${orderId} 的支付状态失败:`, err)
+        // 默认为未支付
+        orderObj.isPaid = false
+        return false
       }
     }
 
@@ -659,6 +852,99 @@ export default defineComponent({
         router.push(`/photography-booking-process/${orderId}`)
       } else {
         router.push(`/order-process/${orderId}`) // 原有的通用路径，后续可以改为摄影专用
+      }
+    }
+
+    // 支付相关
+    const showPaymentModal = ref(false)
+    const selectedPaymentMethod = ref('')
+    const isProcessingPayment = ref(false)
+    const paymentDetails = ref({
+      orderType: '',
+      orderId: 0,
+      amount: 0,
+    })
+
+    // 支付方式列表
+    const paymentMethods = [
+      { value: 'Wechat', label: '微信支付', icon: '📱' },
+      { value: 'Alipay', label: '支付宝', icon: '💰' },
+      { value: 'BankTransfer', label: '银行转账', icon: '🏦' },
+      { value: 'CreditCard', label: '信用卡', icon: '💳' },
+    ]
+
+    // 打开支付模态框
+    const openPaymentModal = (orderType: string, orderId: number, amount: number) => {
+      paymentDetails.value = {
+        orderType,
+        orderId,
+        amount,
+      }
+      selectedPaymentMethod.value = ''
+      showPaymentModal.value = true
+    }
+
+    // 关闭支付模态框
+    const closePaymentModal = () => {
+      showPaymentModal.value = false
+    }
+
+    // 选择支付方式
+    const selectPaymentMethod = (method: string) => {
+      selectedPaymentMethod.value = method
+    }
+
+    // 创建支付记录
+    const createPayment = async () => {
+      if (!selectedPaymentMethod.value) {
+        alert('请选择支付方式')
+        return
+      }
+
+      try {
+        isProcessingPayment.value = true
+
+        // 构建请求体
+        const paymentData = {
+          orderType: paymentDetails.value.orderType,
+          orderId: paymentDetails.value.orderId,
+          paymentMethod: selectedPaymentMethod.value,
+        }
+
+        console.log('创建支付记录，参数:', paymentData)
+
+        // 步骤1: 调用API创建支付
+        const response = await apiClient.post('/Payment', paymentData)
+        console.log('支付记录创建成功:', response.data)
+
+        // 获取支付ID
+        const paymentId = response.data.paymentId
+
+        // 步骤2: 自动将支付状态更新为已完成（课程演示用）
+        // 生成模拟的交易ID
+        const mockTransactionId = `TX-${Date.now()}-${Math.floor(Math.random() * 1000)}`
+
+        // 调用支付状态更新API
+        const updateResponse = await apiClient.put(`/Payment/${paymentId}/status`, {
+          status: 'Completed',
+          transactionId: mockTransactionId,
+        })
+
+        console.log('支付状态已更新为已完成:', updateResponse.data)
+
+        // 关闭模态框
+        closePaymentModal()
+
+        // 显示成功消息
+        alert(`支付成功！交易编号: ${mockTransactionId}`)
+
+        // 重新加载订单数据以更新支付状态
+        await fetchOrders()
+      } catch (err) {
+        console.error('支付处理失败:', err)
+        alert('支付失败，请稍后重试')
+      } finally {
+        isProcessingPayment.value = false
       }
     }
 
@@ -700,9 +986,19 @@ export default defineComponent({
       getStatusText,
       formatDate,
       fetchOrders,
+      fetchOrderPaymentStatus,
       viewOrderDetails,
       viewBookingDetails,
       processOrder,
+      showPaymentModal,
+      selectedPaymentMethod,
+      isProcessingPayment,
+      paymentDetails,
+      paymentMethods,
+      openPaymentModal,
+      closePaymentModal,
+      selectPaymentMethod,
+      createPayment,
     }
   },
 })
