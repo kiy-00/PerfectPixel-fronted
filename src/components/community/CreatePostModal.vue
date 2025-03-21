@@ -227,9 +227,9 @@ export default defineComponent({
       }
 
       // Validate file size (5MB limit)
-      const maxSize = 5 * 1024 * 1024 // 5MB in bytes
+      const maxSize = 8 * 1024 * 1024 // 5MB in bytes
       if (file.size > maxSize) {
-        errors.image = '图片大小不能超过5MB'
+        errors.image = '图片大小不能超过8MB'
         return
       }
 

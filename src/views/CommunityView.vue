@@ -32,17 +32,15 @@
               class="flex flex-col md:flex-row justify-between items-start md:items-center space-y-4 md:space-y-0"
             >
               <!-- 左侧筛选选项 -->
-              <div class="flex space-x-4">
+              <div class="flex flex-wrap gap-4">
+                <!-- 排序方式 -->
                 <div class="relative">
                   <select
-                    v-model="categoryFilter"
+                    v-model="searchParams.sortBy"
                     class="appearance-none bg-neutral-100 rounded-md py-2 pl-4 pr-10 text-neutral-dark focus:outline-none focus:ring-2 focus:ring-primary"
                   >
-                    <option value="">所有分类</option>
-                    <option value="photography">摄影作品</option>
-                    <option value="retouching">修图成果</option>
-                    <option value="question">技术问答</option>
-                    <option value="sharing">经验分享</option>
+                    <option value="CreatedAt">按发布时间</option>
+                    <option value="LikesCount">按点赞数</option>
                   </select>
                   <div
                     class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none"
@@ -63,15 +61,14 @@
                   </div>
                 </div>
 
+                <!-- 排序顺序 -->
                 <div class="relative">
                   <select
-                    v-model="sortOption"
+                    v-model="searchParams.descending"
                     class="appearance-none bg-neutral-100 rounded-md py-2 pl-4 pr-10 text-neutral-dark focus:outline-none focus:ring-2 focus:ring-primary"
                   >
-                    <option value="latest">最新发布</option>
-                    <option value="popular">热门推荐</option>
-                    <option value="mostLiked">点赞最多</option>
-                    <option value="mostCommented">评论最多</option>
+                    <option :value="true">降序</option>
+                    <option :value="false">升序</option>
                   </select>
                   <div
                     class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none"
@@ -91,14 +88,37 @@
                     </svg>
                   </div>
                 </div>
+
+                <!-- 时间范围筛选按钮 -->
+                <button
+                  @click="showDateFilter = !showDateFilter"
+                  class="px-3 py-2 bg-neutral-100 text-neutral-dark rounded-md hover:bg-neutral-200 flex items-center"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-5 w-5 mr-1"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
+                  </svg>
+                  时间筛选
+                  <span v-if="hasDateFilter" class="ml-1 w-2 h-2 bg-primary rounded-full"></span>
+                </button>
               </div>
 
               <!-- 右侧搜索框 -->
               <div class="relative w-full md:w-auto">
                 <input
-                  v-model="searchQuery"
+                  v-model="searchParams.query"
                   type="text"
-                  placeholder="搜索帖子..."
+                  placeholder="搜索帖子、内容或用户..."
                   class="w-full md:w-64 pl-10 pr-4 py-2 bg-neutral-100 rounded-md text-neutral-dark focus:outline-none focus:ring-2 focus:ring-primary"
                   @keyup.enter="searchPosts"
                 />
@@ -117,6 +137,43 @@
                       d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                     />
                   </svg>
+                </div>
+              </div>
+            </div>
+
+            <!-- 日期筛选扩展面板 -->
+            <div v-if="showDateFilter" class="mt-4 bg-neutral-50 p-4 rounded-md">
+              <div class="flex flex-col md:flex-row gap-4 items-end">
+                <div>
+                  <label class="block text-sm text-neutral-dark mb-1">开始日期</label>
+                  <input
+                    type="date"
+                    v-model="dateFilter.startDate"
+                    class="px-4 py-2 border border-neutral rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+                <div>
+                  <label class="block text-sm text-neutral-dark mb-1">结束日期</label>
+                  <input
+                    type="date"
+                    v-model="dateFilter.endDate"
+                    class="px-4 py-2 border border-neutral rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+                <div class="flex gap-2">
+                  <button
+                    @click="applyDateFilter"
+                    class="px-4 py-2 bg-primary text-white rounded-md hover:bg-green-dark transition-colors"
+                  >
+                    应用筛选
+                  </button>
+                  <button
+                    v-if="hasDateFilter"
+                    @click="clearDateFilter"
+                    class="px-4 py-2 border border-neutral text-neutral-dark rounded-md hover:bg-neutral-light transition-colors"
+                  >
+                    清除筛选
+                  </button>
                 </div>
               </div>
             </div>
@@ -162,43 +219,34 @@
           <div v-else class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             <PostCard
               v-for="post in posts"
-              :key="post.id"
+              :key="post.postId"
               :post="post"
               @like="handleLike"
-              @view-comments="handleViewComments"
               @view-image="handleViewImage"
-              @share="handleShare"
             />
           </div>
 
-          <!-- 加载更多 -->
-          <div v-if="posts.length > 0 && hasMorePosts" class="mt-8 text-center">
-            <button
-              @click="loadMorePosts"
-              class="px-4 py-2 bg-white text-primary border border-primary rounded-md hover:bg-green-light hover:bg-opacity-20 transition-colors"
-              :disabled="loadingMore"
-            >
-              <span v-if="!loadingMore">加载更多</span>
-              <span v-else class="flex items-center justify-center">
-                <svg class="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24">
-                  <circle
-                    class="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    stroke-width="4"
-                    fill="none"
-                  ></circle>
-                  <path
-                    class="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  ></path>
-                </svg>
-                加载中...
-              </span>
-            </button>
+          <!-- 分页控制 -->
+          <div v-if="posts.length > 0" class="mt-8 flex justify-center">
+            <div class="inline-flex rounded-md shadow-sm">
+              <button
+                @click="prevPage"
+                :disabled="searchParams.page === 1"
+                class="px-3 py-2 border border-neutral rounded-l-md bg-white text-neutral-dark hover:bg-neutral-light disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                上一页
+              </button>
+              <div class="px-4 py-2 border-t border-b border-neutral bg-white text-primary">
+                {{ searchParams.page }} / {{ totalPages }}
+              </div>
+              <button
+                @click="nextPage"
+                :disabled="searchParams.page >= totalPages"
+                class="px-3 py-2 border border-neutral rounded-r-md bg-white text-neutral-dark hover:bg-neutral-light disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                下一页
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -245,10 +293,44 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, onMounted, watch } from 'vue'
+import { defineComponent, ref, reactive, computed, onMounted, watch } from 'vue'
 import SideBar from '../components/SideBar.vue'
 import PostCard from '../components/community/PostCard.vue'
 import CreatePostModal from '../components/community/CreatePostModal.vue'
+import apiClient from '../services/apiService'
+
+// 定义帖子搜索参数v2类型
+interface PostSearchParamsV2 {
+  query: string
+  startDate?: string
+  endDate?: string
+  sortBy: string
+  descending: boolean
+  page: number
+  pageSize: number
+}
+
+// 定义Post接口
+interface Post {
+  postId: number
+  userId: number
+  username: string
+  title: string
+  content: string
+  imagePath: string | null
+  likesCount: number
+  isLikedByCurrentUser: boolean
+  createdAt: string
+}
+
+// 定义分页结果接口
+interface PagedResult<T> {
+  items: T[]
+  totalCount: number
+  page: number
+  pageSize: number
+  totalPages: number
+}
 
 export default defineComponent({
   name: 'CommunityView',
@@ -258,214 +340,247 @@ export default defineComponent({
     CreatePostModal,
   },
   setup() {
-    // UI state refs
+    // UI state
     const loading = ref(true)
-    const loadingMore = ref(false)
-    const hasMorePosts = ref(true)
     const imageViewerUrl = ref('')
+    const showCreatePostModal = ref(false)
+    const showDateFilter = ref(false)
+    const totalPages = ref(1)
+    const totalPosts = ref(0)
 
-    // Filter and sort options
-    const categoryFilter = ref('')
-    const sortOption = ref('latest')
-    const searchQuery = ref('')
-
-    // Posts data
-    const posts = ref<any[]>([])
-
-    // Load posts on component mount
-    onMounted(() => {
-      fetchPosts()
+    // 搜索参数 - 使用新的V2接口参数
+    const searchParams = reactive<PostSearchParamsV2>({
+      query: '',
+      sortBy: 'CreatedAt',
+      descending: true,
+      page: 1,
+      pageSize: 9,
     })
 
-    // Watch for filter changes
-    watch([categoryFilter, sortOption], () => {
-      fetchPosts()
+    // 日期筛选
+    const dateFilter = reactive({
+      startDate: '',
+      endDate: '',
     })
 
-    // Fetch posts from API (mock implementation)
-    const fetchPosts = async () => {
+    // 是否有日期筛选
+    const hasDateFilter = computed(() => {
+      return searchParams.startDate !== undefined || searchParams.endDate !== undefined
+    })
+
+    // 帖子数据
+    const posts = ref<Post[]>([])
+
+    // 监听搜索参数变化
+    watch([() => searchParams.sortBy, () => searchParams.descending], () => {
+      searchParams.page = 1 // 重置到第一页
+
+      // 如果有搜索条件，使用搜索接口；否则获取最新帖子
+      if (searchParams.query || searchParams.startDate || searchParams.endDate) {
+        fetchPosts()
+      } else {
+        fetchLatestPosts()
+      }
+    })
+
+    // 应用日期筛选
+    const applyDateFilter = () => {
+      if (dateFilter.startDate) {
+        searchParams.startDate = dateFilter.startDate
+      } else {
+        searchParams.startDate = undefined
+      }
+
+      if (dateFilter.endDate) {
+        searchParams.endDate = dateFilter.endDate
+      } else {
+        searchParams.endDate = undefined
+      }
+
+      searchParams.page = 1 // 重置到第一页
+      showDateFilter.value = false
+
+      // 当应用日期筛选时，总是使用搜索接口
+      fetchPosts()
+    }
+
+    // 清除日期筛选
+    const clearDateFilter = () => {
+      dateFilter.startDate = ''
+      dateFilter.endDate = ''
+      searchParams.startDate = undefined
+      searchParams.endDate = undefined
+      searchParams.page = 1
+
+      // 如果没有搜索关键词，则回到获取最新帖子
+      if (!searchParams.query) {
+        fetchLatestPosts()
+      } else {
+        fetchPosts()
+      }
+    }
+
+    // 获取最新帖子
+    const fetchLatestPosts = async () => {
       loading.value = true
 
       try {
-        // Simulate API delay
-        await new Promise((resolve) => setTimeout(resolve, 1000))
+        // 使用latest接口获取最新帖子
+        const response = await apiClient.get('/Post/latest', {
+          params: { count: searchParams.pageSize },
+        })
 
-        // For demonstration, we'll generate mock data
-        posts.value = generateMockPosts()
+        // latest API返回的是数组而不是分页对象
+        posts.value = response.data
+
+        // 因为latest API不是分页的，所以重置分页相关状态
+        totalPages.value = 1
+        totalPosts.value = posts.value.length
+        searchParams.page = 1
       } catch (error) {
-        console.error('Error fetching posts:', error)
+        console.error('获取最新帖子失败:', error)
       } finally {
         loading.value = false
       }
     }
 
-    // Load more posts
-    const loadMorePosts = async () => {
-      if (loadingMore.value) return
-
-      loadingMore.value = true
+    // 使用V2接口搜索帖子
+    const fetchPosts = async () => {
+      loading.value = true
 
       try {
-        // Simulate API delay
-        await new Promise((resolve) => setTimeout(resolve, 1000))
+        // 构建查询参数
+        const params: Record<string, string> = {
+          page: searchParams.page.toString(),
+          pageSize: searchParams.pageSize.toString(),
+          sortBy: searchParams.sortBy,
+          descending: searchParams.descending.toString(),
+        }
 
-        // Add more mock posts
-        const morePosts = generateMockPosts(3, posts.value.length)
-        posts.value = [...posts.value, ...morePosts]
+        if (searchParams.query) {
+          params.query = searchParams.query
+        }
 
-        // For demo purposes, limit "infinite" scroll
-        if (posts.value.length >= 15) {
-          hasMorePosts.value = false
+        if (searchParams.startDate) {
+          params.startDate = searchParams.startDate
+        }
+
+        if (searchParams.endDate) {
+          params.endDate = searchParams.endDate
+        }
+
+        // 调用新的V2搜索API
+        const response = await apiClient.get('/Post/search/v2', { params })
+        const result = response.data as PagedResult<Post>
+
+        posts.value = result.items
+        totalPages.value = result.totalPages
+        totalPosts.value = result.totalCount
+      } catch (error) {
+        console.error('获取帖子失败:', error)
+      } finally {
+        loading.value = false
+      }
+    }
+
+    // 搜索帖子
+    const searchPosts = () => {
+      searchParams.page = 1 // 重置页码
+      // 只有当有搜索条件时才使用搜索API，否则获取最新帖子
+      if (searchParams.query || searchParams.startDate || searchParams.endDate) {
+        fetchPosts()
+      } else {
+        fetchLatestPosts()
+      }
+    }
+
+    // 下一页
+    const nextPage = () => {
+      if (searchParams.page < totalPages.value) {
+        searchParams.page++
+        fetchPosts()
+      }
+    }
+
+    // 上一页
+    const prevPage = () => {
+      if (searchParams.page > 1) {
+        searchParams.page--
+        fetchPosts()
+      }
+    }
+
+    // 点赞/取消点赞
+    const handleLike = async (postId: number) => {
+      try {
+        const post = posts.value.find((p) => p.postId === postId)
+        if (!post) return
+
+        // 乐观更新UI
+        post.isLikedByCurrentUser = !post.isLikedByCurrentUser
+        post.likesCount += post.isLikedByCurrentUser ? 1 : -1
+
+        // 调用API
+        if (post.isLikedByCurrentUser) {
+          await apiClient.post(`/Post/${postId}/like`)
+        } else {
+          await apiClient.delete(`/Post/${postId}/like`)
         }
       } catch (error) {
-        console.error('Error loading more posts:', error)
-      } finally {
-        loadingMore.value = false
+        console.error('点赞操作失败:', error)
+        // 操作失败时，重新获取数据
+        fetchPosts()
       }
     }
 
-    // Search posts
-    const searchPosts = () => {
-      // In a real app, this would trigger an API call with the search term
-      console.log('Searching for:', searchQuery.value)
-      fetchPosts()
-    }
-
-    // Handle like action
-    const handleLike = (postId: number) => {
-      const post = posts.value.find((p) => p.id === postId)
-      if (post) {
-        post.isLiked = !post.isLiked
-        post.likes += post.isLiked ? 1 : -1
-      }
-    }
-
-    // Handle view comments
-    const handleViewComments = (postId: number) => {
-      console.log('View comments for post:', postId)
-      // In a real app, this would open a comments section or navigate to a details page
-    }
-
-    // Handle view image
+    // 查看图片
     const handleViewImage = (imageUrl: string) => {
       imageViewerUrl.value = imageUrl
     }
 
-    // Close image viewer
+    // 关闭图片查看器
     const closeImageViewer = () => {
       imageViewerUrl.value = ''
     }
 
-    // Handle share post
-    const handleShare = (postId: number) => {
-      console.log('Share post:', postId)
-      // In a real app, this would open a share dialog
-    }
-
-    // Create post modal state
-    const showCreatePostModal = ref(false)
-
-    // Open create post modal
+    // 打开创建帖子模态框
     const openCreatePostModal = () => {
       showCreatePostModal.value = true
     }
 
-    // Handle post created event
-    const handlePostCreated = (newPost: any) => {
-      // In a real app, we would need to update the posts list with the new post
-      // For now, we'll just refetch all posts
-      fetchPosts()
+    // 处理帖子创建成功
+    const handlePostCreated = () => {
+      // 刷新最新帖子列表
+      fetchLatestPosts()
     }
 
-    // Helper function to generate mock posts
-    const generateMockPosts = (count = 10, startId = 0) => {
-      const categories = ['photography', 'retouching', 'question', 'sharing']
-      const tags = [
-        '人像摄影',
-        '风景摄影',
-        '产品摄影',
-        '修图技巧',
-        'Photoshop',
-        'Lightroom',
-        '构图指南',
-        '色彩理论',
-      ]
-      const userNames = ['张摄影', '李修图', '王光影', '赵构图', '刘色彩', '陈快门']
-
-      return Array.from({ length: count }, (_, i) => {
-        const id = startId + i + 1
-        const category = categories[Math.floor(Math.random() * categories.length)]
-        const postTags = Array.from(
-          { length: Math.floor(Math.random() * 3) + 1 },
-          () => tags[Math.floor(Math.random() * tags.length)],
-        )
-
-        // Create unique tag set (no duplicates)
-        const uniqueTags = Array.from(new Set(postTags))
-
-        // Random creation date within the last month
-        const createdAt = new Date()
-        createdAt.setDate(createdAt.getDate() - Math.floor(Math.random() * 30))
-
-        // Determine if post has an image based on category
-        const hasImage =
-          category === 'photography' || category === 'retouching' || Math.random() > 0.3
-
-        // Set image URL or placeholder
-        const imageNumber = Math.floor(Math.random() * 5) + 1 // 1-5
-        const imageUrl = hasImage ? `/images/samples/sample${imageNumber}.jpg` : ''
-
-        return {
-          id,
-          userName: userNames[Math.floor(Math.random() * userNames.length)],
-          title: `社区帖子 #${id} - ${category === 'question' ? '求助' : '分享'}`,
-          content: generateLoremText(),
-          imageUrl,
-          category,
-          tags: uniqueTags,
-          likes: Math.floor(Math.random() * 50),
-          comments: Math.floor(Math.random() * 20),
-          isLiked: Math.random() > 0.7,
-          createdAt: createdAt.toISOString(),
-        }
-      })
-    }
-
-    // Helper function to generate random text
-    const generateLoremText = () => {
-      const texts = [
-        '分享一组近期拍摄的人像作品，光线运用和后期色彩处理都是我比较满意的部分。欢迎大家点评和交流！',
-        '最近研究了一套新的修图流程，特别是对于肤色处理有了新的心得。附上修图前后对比，希望能给大家一些启发。',
-        '请教一个关于夜景摄影的问题：在光污染严重的城市，如何拍出干净的星空？有没有推荐的后期降噪方法？',
-        '分享一个小技巧：使用渐变滤镜平衡天空与地面的曝光差异，效果比后期合成自然得多。大家有什么其他实用的拍摄技巧吗？',
-        '刚入手了新的相机和镜头，还在适应中。这是我的第一组测试照片，构图和用光还需要多加练习。期待各位的建议！',
-        '这组照片是我在尝试一种新的色彩风格，偏向于电影感的调色。过程中遇到了一些挑战，但最终效果我还比较满意。',
-        '想请教一下大家关于人像摄影中的引导姿势问题，特别是拍摄经验不多的普通人，有什么好的方法让被摄者自然放松？',
-        '最近在练习产品摄影，光比控制是我遇到的最大难题。这是我最近的一些尝试，欢迎有经验的摄影师给些建议。',
-      ]
-
-      return texts[Math.floor(Math.random() * texts.length)]
-    }
+    // 组件挂载时获取最新帖子
+    onMounted(() => {
+      fetchLatestPosts()
+    })
 
     return {
       posts,
       loading,
-      loadingMore,
-      hasMorePosts,
-      categoryFilter,
-      sortOption,
-      searchQuery,
+      searchParams,
+      dateFilter,
+      showDateFilter,
+      hasDateFilter,
+      totalPages,
+      totalPosts,
       imageViewerUrl,
+      showCreatePostModal,
       fetchPosts,
+      fetchLatestPosts,
       searchPosts,
-      loadMorePosts,
+      applyDateFilter,
+      clearDateFilter,
+      nextPage,
+      prevPage,
       handleLike,
-      handleViewComments,
       handleViewImage,
       closeImageViewer,
-      handleShare,
       openCreatePostModal,
-      showCreatePostModal,
       handlePostCreated,
     }
   },
