@@ -209,6 +209,11 @@ const router = createRouter({
         requiresPhotographer: true,
       },
     },
+    {
+      path: '/community',
+      name: 'community',
+      component: () => import('../views/CommunityView.vue'),
+    },
   ],
 })
 
