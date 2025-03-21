@@ -516,20 +516,27 @@ export default defineComponent({
         const post = posts.value.find((p) => p.postId === postId)
         if (!post) return
 
-        // 乐观更新UI
-        post.isLikedByCurrentUser = !post.isLikedByCurrentUser
-        post.likesCount += post.isLikedByCurrentUser ? 1 : -1
-
-        // 调用API
+        // We handle the unlike case here (the like case is handled directly in the PostCard component)
         if (post.isLikedByCurrentUser) {
-          await apiClient.post(`/Post/${postId}/like`)
-        } else {
+          // Unlike post
           await apiClient.delete(`/Post/${postId}/like`)
+          post.isLikedByCurrentUser = false
+
+          // Refresh the posts to get updated like count
+          if (searchParams.query || searchParams.startDate || searchParams.endDate) {
+            fetchPosts()
+          } else {
+            fetchLatestPosts()
+          }
         }
       } catch (error) {
         console.error('点赞操作失败:', error)
-        // 操作失败时，重新获取数据
-        fetchPosts()
+        // On error, refresh the posts data
+        if (searchParams.query || searchParams.startDate || searchParams.endDate) {
+          fetchPosts()
+        } else {
+          fetchLatestPosts()
+        }
       }
     }
 

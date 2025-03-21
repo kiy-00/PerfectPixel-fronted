@@ -87,14 +87,15 @@
             d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
           />
         </svg>
-        <span>{{ post.likesCount || 0 }}</span>
+        <span>{{ likesCount }}</span>
       </button>
     </div>
   </div>
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue'
+import { defineComponent, ref, onMounted } from 'vue'
+import apiClient from '../../services/apiService'
 
 export default defineComponent({
   name: 'PostCard',
@@ -105,6 +106,9 @@ export default defineComponent({
     },
   },
   setup(props, { emit }) {
+    // Add reactive state for likes count
+    const likesCount = ref(props.post.likesCount || 0)
+
     // Format date to a readable string
     const formatDate = (dateString: string) => {
       const date = new Date(dateString)
@@ -150,9 +154,49 @@ export default defineComponent({
       return `${staticAssetsUrl}${path}`
     }
 
+    // Fetch likes count from API
+    const fetchLikes = async () => {
+      try {
+        const response = await apiClient.get(`/Like/post/${props.post.postId}`)
+        // The API returns a list of likes, so the count is the length of the array
+        if (Array.isArray(response.data)) {
+          likesCount.value = response.data.length
+        }
+      } catch (error) {
+        console.error(`Error fetching likes for post ${props.post.postId}:`, error)
+        // Fall back to the value passed in props if API call fails
+        likesCount.value = props.post.likesCount || 0
+      }
+    }
+
     // Toggle like status
-    const toggleLike = () => {
-      emit('like', props.post.postId)
+    const toggleLike = async () => {
+      try {
+        // Update UI optimistically
+        const wasLiked = props.post.isLikedByCurrentUser
+        props.post.isLikedByCurrentUser = !wasLiked
+        likesCount.value = wasLiked ? likesCount.value - 1 : likesCount.value + 1
+
+        // Make API call to like/unlike
+        if (!wasLiked) {
+          // Like post
+          await apiClient.post(`/Like/post/${props.post.postId}`)
+        } else {
+          // Unlike post (using the parent component for this)
+          emit('like', props.post.postId)
+        }
+      } catch (error) {
+        console.error('Error toggling like:', error)
+
+        // Revert UI changes on error
+        props.post.isLikedByCurrentUser = !props.post.isLikedByCurrentUser
+        likesCount.value = props.post.isLikedByCurrentUser
+          ? likesCount.value + 1
+          : likesCount.value - 1
+
+        // Refresh likes count from server
+        fetchLikes()
+      }
     }
 
     // View full image
@@ -160,11 +204,17 @@ export default defineComponent({
       emit('view-image', getImageUrl(props.post.imagePath))
     }
 
+    // Fetch likes when component is mounted
+    onMounted(() => {
+      fetchLikes()
+    })
+
     return {
       formatDate,
       getImageUrl,
       toggleLike,
       viewImage,
+      likesCount,
     }
   },
 })
