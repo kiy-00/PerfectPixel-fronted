@@ -13,12 +13,20 @@
               <h1 class="text-2xl font-bold">迷你社区</h1>
               <p class="text-sm text-green-light mt-1">分享您的摄影和修图作品，探索社区创作</p>
             </div>
-            <button
-              @click="openCreatePostModal"
-              class="px-4 py-2 bg-white text-primary rounded-md hover:bg-green-light transition-colors"
-            >
-              创建帖子
-            </button>
+            <div class="flex space-x-3">
+              <router-link
+                to="/my-posts"
+                class="px-4 py-2 bg-white text-primary rounded-md hover:bg-green-light transition-colors"
+              >
+                我的帖子
+              </router-link>
+              <button
+                @click="openCreatePostModal"
+                class="px-4 py-2 bg-white text-primary rounded-md hover:bg-green-light transition-colors"
+              >
+                创建帖子
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -518,8 +526,8 @@ export default defineComponent({
 
         // We handle the unlike case here (the like case is handled directly in the PostCard component)
         if (post.isLikedByCurrentUser) {
-          // Unlike post
-          await apiClient.delete(`/Post/${postId}/like`)
+          // Unlike post - Using the correct API endpoint
+          await apiClient.delete(`/Like/post/${postId}`)
           post.isLikedByCurrentUser = false
 
           // Refresh the posts to get updated like count

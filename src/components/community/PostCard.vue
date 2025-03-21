@@ -4,14 +4,21 @@
   >
     <!-- Post header with user info -->
     <div class="flex items-center p-4 border-b border-neutral-100">
-      <!-- User avatar -->
+      <!-- User avatar - make it clickable -->
       <div
-        class="bg-primary text-white w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg mr-3"
+        class="bg-primary text-white w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg mr-3 cursor-pointer hover:bg-green-dark transition-colors"
+        @click="navigateToUserProfile"
       >
         {{ post.username ? post.username.charAt(0).toUpperCase() : '?' }}
       </div>
       <div class="flex-grow">
-        <div class="font-medium text-neutral-dark">{{ post.username }}</div>
+        <!-- Make username clickable too -->
+        <div
+          class="font-medium text-neutral-dark hover:text-primary cursor-pointer"
+          @click="navigateToUserProfile"
+        >
+          {{ post.username }}
+        </div>
         <div class="text-xs text-neutral-500">{{ formatDate(post.createdAt) }}</div>
       </div>
       <div class="text-neutral">
@@ -96,6 +103,7 @@
 <script lang="ts">
 import { defineComponent, ref, onMounted } from 'vue'
 import apiClient from '../../services/apiService'
+import { useRouter } from 'vue-router'
 
 export default defineComponent({
   name: 'PostCard',
@@ -106,8 +114,10 @@ export default defineComponent({
     },
   },
   setup(props, { emit }) {
-    // Add reactive state for likes count
+    const router = useRouter()
+    // Add reactive state for likes count and liked status
     const likesCount = ref(props.post.likesCount || 0)
+    const isLiked = ref(props.post.isLikedByCurrentUser || false)
 
     // Format date to a readable string
     const formatDate = (dateString: string) => {
@@ -169,33 +179,63 @@ export default defineComponent({
       }
     }
 
-    // Toggle like status
+    // Check if user has already liked the post
+    const checkLikeStatus = async () => {
+      try {
+        const response = await apiClient.get(`/Like/check/${props.post.postId}`)
+        if (response.data && typeof response.data.hasLiked === 'boolean') {
+          // Update local state based on server response
+          isLiked.value = response.data.hasLiked
+
+          // If server state differs from prop state, update the parent component
+          if (isLiked.value !== props.post.isLikedByCurrentUser) {
+            props.post.isLikedByCurrentUser = isLiked.value
+            console.log(`Updated like status for post ${props.post.postId} to ${isLiked.value}`)
+          }
+        }
+      } catch (error) {
+        console.error(`Error checking like status for post ${props.post.postId}:`, error)
+      }
+    }
+
+    // Toggle like status with server verification
     const toggleLike = async () => {
       try {
-        // Update UI optimistically
-        const wasLiked = props.post.isLikedByCurrentUser
-        props.post.isLikedByCurrentUser = !wasLiked
-        likesCount.value = wasLiked ? likesCount.value - 1 : likesCount.value + 1
+        // First check the current like status to ensure UI matches server state
+        await checkLikeStatus()
 
-        // Make API call to like/unlike
-        if (!wasLiked) {
+        // Now toggle based on verified status
+        const currentLikeStatus = isLiked.value
+
+        // Update UI optimistically
+        isLiked.value = !currentLikeStatus
+        likesCount.value = currentLikeStatus ? likesCount.value - 1 : likesCount.value + 1
+        props.post.isLikedByCurrentUser = isLiked.value
+
+        // Make API call based on verified status
+        if (!currentLikeStatus) {
           // Like post
           await apiClient.post(`/Like/post/${props.post.postId}`)
         } else {
-          // Unlike post (using the parent component for this)
-          emit('like', props.post.postId)
+          // Unlike post
+          await apiClient.delete(`/Like/post/${props.post.postId}`)
         }
+
+        // Refresh likes count to ensure accuracy
+        fetchLikes()
       } catch (error) {
         console.error('Error toggling like:', error)
 
         // Revert UI changes on error
-        props.post.isLikedByCurrentUser = !props.post.isLikedByCurrentUser
-        likesCount.value = props.post.isLikedByCurrentUser
-          ? likesCount.value + 1
-          : likesCount.value - 1
+        isLiked.value = !isLiked.value
+        likesCount.value = isLiked.value ? likesCount.value + 1 : likesCount.value - 1
+        props.post.isLikedByCurrentUser = isLiked.value
 
         // Refresh likes count from server
         fetchLikes()
+
+        // Recheck like status
+        checkLikeStatus()
       }
     }
 
@@ -204,9 +244,19 @@ export default defineComponent({
       emit('view-image', getImageUrl(props.post.imagePath))
     }
 
-    // Fetch likes when component is mounted
+    // Navigate to user profile
+    const navigateToUserProfile = () => {
+      if (props.post.userId) {
+        router.push({
+          path: `/user/${props.post.userId}`,
+        })
+      }
+    }
+
+    // Fetch likes when component is mounted and verify like status
     onMounted(() => {
       fetchLikes()
+      checkLikeStatus()
     })
 
     return {
@@ -215,6 +265,8 @@ export default defineComponent({
       toggleLike,
       viewImage,
       likesCount,
+      isLiked,
+      navigateToUserProfile,
     }
   },
 })

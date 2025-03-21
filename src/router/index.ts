@@ -214,6 +214,12 @@ const router = createRouter({
       name: 'community',
       component: () => import('../views/CommunityView.vue'),
     },
+    {
+      path: '/my-posts',
+      name: 'my-posts',
+      component: () => import('../views/MyPostsView.vue'),
+      meta: { requiresAuth: true },
+    },
   ],
 })
 
