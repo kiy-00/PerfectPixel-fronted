@@ -109,8 +109,11 @@
                 v-for="post in posts"
                 :key="post.postId"
                 :post="post"
+                :showDeleteOption="true"
                 @like="handleLike"
                 @view-image="handleViewImage"
+                @delete-post="handleDeletePost"
+                @edit-post="handleEditPost"
               />
             </div>
 
@@ -178,6 +181,14 @@
       @close="showCreatePostModal = false"
       @post-created="handlePostCreated"
     />
+
+    <!-- 编辑帖子模态框 -->
+    <EditPostModal
+      v-if="showEditPostModal && editingPost"
+      :post="editingPost"
+      @close="showEditPostModal = false"
+      @post-updated="handlePostUpdated"
+    />
   </div>
 </template>
 
@@ -188,6 +199,7 @@ import { useRouter } from 'vue-router'
 import SideBar from '../components/SideBar.vue'
 import PostCard from '../components/community/PostCard.vue'
 import CreatePostModal from '../components/community/CreatePostModal.vue'
+import EditPostModal from '../components/community/EditPostModal.vue'
 import apiClient from '../services/apiService'
 
 // 定义Post接口
@@ -218,6 +230,7 @@ export default defineComponent({
     SideBar,
     PostCard,
     CreatePostModal,
+    EditPostModal,
   },
   setup() {
     const userStore = useUserStore()
@@ -233,6 +246,10 @@ export default defineComponent({
     const pageSize = ref(9)
     const totalPages = ref(1)
     const totalCount = ref(0)
+
+    // 编辑帖子相关状态
+    const showEditPostModal = ref(false)
+    const editingPost = ref<Post | null>(null)
 
     // 尝试初始化用户
     const initUser = async () => {
@@ -364,22 +381,8 @@ export default defineComponent({
 
     // 点赞/取消点赞
     const handleLike = async (postId: number) => {
-      try {
-        const post = posts.value.find((p) => p.postId === postId)
-        if (!post) return
-
-        // 处理取消点赞的情况
-        if (post.isLikedByCurrentUser) {
-          // 使用正确的API端点取消点赞
-          await apiClient.delete(`/Like/post/${postId}`)
-          // 刷新数据以获取更新后的点赞数
-          fetchUserPosts()
-        }
-      } catch (error) {
-        console.error('点赞操作失败:', error)
-        // 操作失败时重新获取数据
-        fetchUserPosts()
-      }
+      // Just refresh the posts to reflect any changes
+      fetchUserPosts()
     }
 
     // 查看图片
@@ -401,6 +404,59 @@ export default defineComponent({
     const handlePostCreated = () => {
       // 刷新帖子列表
       fetchUserPosts()
+    }
+
+    // 处理帖子删除
+    const handleDeletePost = async (postId: number) => {
+      try {
+        loading.value = true
+        console.log('删除帖子，ID:', postId)
+
+        // Call API to delete the post
+        await apiClient.delete(`/Post/${postId}`)
+
+        console.log('帖子删除成功')
+
+        // Show success message
+        alert('帖子已成功删除')
+
+        // Refresh the posts list
+        fetchUserPosts()
+      } catch (err: any) {
+        console.error('删除帖子失败:', err)
+
+        // Handle different error responses
+        if (err.response) {
+          if (err.response.status === 403) {
+            alert('您没有权限删除此帖子')
+          } else if (err.response.status === 404) {
+            alert('帖子不存在或已被删除')
+            // Refresh anyway to update the list
+            fetchUserPosts()
+          } else {
+            alert('删除帖子失败，请稍后再试')
+          }
+        } else {
+          alert('删除帖子失败，请检查网络连接')
+        }
+      } finally {
+        loading.value = false
+      }
+    }
+
+    // 处理编辑帖子
+    const handleEditPost = (post: Post) => {
+      editingPost.value = post
+      showEditPostModal.value = true
+    }
+
+    // 处理帖子更新完成
+    const handlePostUpdated = () => {
+      // 刷新帖子列表以获取最新数据
+      fetchUserPosts()
+      // 关闭编辑模态框
+      showEditPostModal.value = false
+      editingPost.value = null
     }
 
     onMounted(async () => {
@@ -425,6 +481,11 @@ export default defineComponent({
       closeImageViewer,
       openCreatePostModal,
       handlePostCreated,
+      handleDeletePost,
+      showEditPostModal,
+      editingPost,
+      handleEditPost,
+      handlePostUpdated,
     }
   },
 })

@@ -21,8 +21,8 @@
         </div>
         <div class="text-xs text-neutral-500">{{ formatDate(post.createdAt) }}</div>
       </div>
-      <div class="text-neutral">
-        <button class="hover:text-primary" title="更多操作">
+      <div class="text-neutral relative">
+        <button class="hover:text-primary" title="更多操作" @click="toggleDropdown">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             class="h-5 w-5"
@@ -34,6 +34,28 @@
             />
           </svg>
         </button>
+        <!-- Dropdown Menu -->
+        <div
+          v-if="showDropdown"
+          class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10"
+        >
+          <div class="py-1">
+            <button
+              v-if="showDeleteOption"
+              @click="editPost"
+              class="block w-full text-left px-4 py-2 text-sm text-primary hover:bg-neutral-100"
+            >
+              编辑帖子
+            </button>
+            <button
+              v-if="showDeleteOption"
+              @click="confirmDeletePost"
+              class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-neutral-100"
+            >
+              删除帖子
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -101,7 +123,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, onMounted } from 'vue'
+import { defineComponent, ref, onMounted, onUnmounted } from 'vue'
 import apiClient from '../../services/apiService'
 import { useRouter } from 'vue-router'
 
@@ -111,6 +133,10 @@ export default defineComponent({
     post: {
       type: Object,
       required: true,
+    },
+    showDeleteOption: {
+      type: Boolean,
+      default: false,
     },
   },
   setup(props, { emit }) {
@@ -253,6 +279,44 @@ export default defineComponent({
       }
     }
 
+    // Dropdown functionality
+    const showDropdown = ref(false)
+
+    const toggleDropdown = () => {
+      showDropdown.value = !showDropdown.value
+    }
+
+    // Close dropdown when clicking outside
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showDropdown.value && !(event.target as Element).closest('.text-neutral')) {
+        showDropdown.value = false
+      }
+    }
+
+    // Delete post functionality
+    const confirmDeletePost = () => {
+      showDropdown.value = false // Close dropdown
+
+      if (confirm('确定要删除这篇帖子吗？此操作不可撤销。')) {
+        emit('delete-post', props.post.postId)
+      }
+    }
+
+    // Edit post functionality
+    const editPost = () => {
+      showDropdown.value = false // Close dropdown
+      emit('edit-post', props.post)
+    }
+
+    // Add and remove global click event listener
+    onMounted(() => {
+      document.addEventListener('click', handleClickOutside)
+    })
+
+    onUnmounted(() => {
+      document.removeEventListener('click', handleClickOutside)
+    })
+
     // Fetch likes when component is mounted and verify like status
     onMounted(() => {
       fetchLikes()
@@ -267,6 +331,11 @@ export default defineComponent({
       likesCount,
       isLiked,
       navigateToUserProfile,
+      showDropdown,
+      toggleDropdown,
+      confirmDeletePost,
+      editPost,
+      showDeleteOption: props.showDeleteOption,
     }
   },
 })
