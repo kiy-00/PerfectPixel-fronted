@@ -108,6 +108,13 @@
                 取消预约
               </button>
               <button
+                v-if="bookingDetails.status === 'Completed'"
+                @click="viewPhotos"
+                class="px-4 py-2 bg-primary text-white rounded-md hover:bg-green-dark transition-colors"
+              >
+                查看成片
+              </button>
+              <button
                 v-if="bookingDetails.status === 'Completed' && bookingDetails.isPublic"
                 @click="viewAlbum"
                 class="px-4 py-2 bg-primary text-white rounded-md hover:bg-green-dark transition-colors"
@@ -247,6 +254,171 @@
               </div>
             </div>
           </div>
+
+          <!-- 照片展示区域 -->
+          <div
+            v-if="bookingDetails.status === 'Completed' && showPhotos"
+            class="bg-white rounded-lg shadow-md p-6 mt-6"
+          >
+            <div class="flex justify-between items-center mb-6">
+              <h2 class="text-xl font-semibold text-neutral-dark">拍摄成片</h2>
+              <div class="text-sm text-neutral-dark">共 {{ photos.length }} 张照片</div>
+            </div>
+
+            <!-- 照片加载中 -->
+            <div v-if="loadingPhotos" class="flex justify-center py-8">
+              <div class="text-center">
+                <div
+                  class="inline-block animate-spin rounded-full h-10 w-10 border-4 border-primary border-t-transparent"
+                ></div>
+                <p class="mt-3 text-neutral-dark">正在加载照片...</p>
+              </div>
+            </div>
+
+            <!-- 照片加载错误 -->
+            <div v-else-if="photoError" class="py-8 text-center">
+              <p class="text-error mb-3">{{ photoError }}</p>
+              <button
+                @click="fetchBookingPhotos"
+                class="px-4 py-2 bg-primary text-white rounded-md hover:bg-green-dark transition-colors"
+              >
+                重新加载
+              </button>
+            </div>
+
+            <!-- 无照片提示 -->
+            <div v-else-if="photos.length === 0" class="py-8 text-center">
+              <p class="text-neutral-dark">摄影师尚未上传照片，请稍后再来查看</p>
+            </div>
+
+            <!-- 照片展示网格 -->
+            <div v-else>
+              <div class="grid grid-cols-2 sm:grid-cols-3 gap-6">
+                <div
+                  v-for="photo in photos"
+                  :key="photo.photoId"
+                  class="relative group cursor-pointer"
+                  @click="openPhotoViewer(photo)"
+                >
+                  <div class="aspect-square overflow-hidden rounded-lg shadow-sm">
+                    <img
+                      :src="getStaticAssetUrl(photo.thumbnailUrl)"
+                      :alt="photo.title || '照片'"
+                      class="w-full h-full object-cover transition-transform group-hover:scale-105"
+                      @error="handleImageError($event, photo)"
+                    />
+                    <div
+                      v-if="photo.hasError"
+                      class="absolute inset-0 flex items-center justify-center bg-neutral-light bg-opacity-90 text-neutral-dark"
+                    >
+                      <div class="text-center p-3">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          class="h-8 w-8 mx-auto mb-1"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                          />
+                        </svg>
+                        <p class="text-xs">图片加载失败</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="mt-2">
+                    <p class="text-sm font-medium text-neutral-dark truncate">
+                      {{ photo.title || `照片 ${photo.photoId}` }}
+                    </p>
+                    <p class="text-xs text-neutral mt-0.5">
+                      {{ formatPhotoDate(photo.uploadedAt) }}
+                    </p>
+                  </div>
+
+                  <div
+                    class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100"
+                  >
+                    <button
+                      class="bg-white text-primary px-3 py-1.5 rounded shadow-md text-sm font-medium"
+                    >
+                      查看原图
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 照片操作按钮 - 移除批量审核按钮，只保留下载功能 -->
+              <div class="mt-8 p-4 bg-neutral-light bg-opacity-50 rounded-lg">
+                <div
+                  class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
+                >
+                  <div>
+                    <h3 class="text-sm font-medium text-neutral-dark">照片下载</h3>
+                    <p class="text-xs text-neutral-dark mt-1">
+                      您可以下载满意的照片，需要原图请联系摄影师
+                    </p>
+                  </div>
+                  <div>
+                    <button
+                      @click="downloadAllPhotos"
+                      class="px-3 py-1.5 border border-primary text-primary rounded text-sm hover:bg-green-light hover:bg-opacity-20 transition-colors"
+                    >
+                      下载所有照片
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 照片查看器 -->
+            <div
+              v-if="currentViewingPhoto"
+              class="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4"
+            >
+              <div class="max-w-4xl w-full relative">
+                <img
+                  :src="getStaticAssetUrl(currentViewingPhoto.imageUrl)"
+                  :alt="currentViewingPhoto.title || '照片'"
+                  class="max-h-[80vh] w-auto mx-auto"
+                />
+
+                <div class="absolute bottom-4 left-0 right-0 flex justify-center gap-4">
+                  <!-- 移除审核按钮，只保留下载按钮 -->
+                  <button
+                    @click="downloadPhoto(currentViewingPhoto)"
+                    class="px-4 py-2 bg-white text-primary rounded-md hover:bg-green-light transition-colors"
+                  >
+                    下载原图
+                  </button>
+                </div>
+
+                <button
+                  @click="closePhotoViewer"
+                  class="absolute top-4 right-4 text-white hover:text-green-light"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-8 w-8"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- 右侧联系信息和备注 -->
@@ -254,8 +426,13 @@
           <div class="bg-white rounded-lg shadow-md p-6 mb-6">
             <h2 class="text-xl font-semibold text-neutral-dark mb-4">摄影师信息</h2>
             <div class="flex items-center mb-4">
-              <div class="w-16 h-16 bg-neutral-light rounded-full mr-4 flex-shrink-0">
-                <!-- 这里可以添加摄影师头像 -->
+              <!-- 更新摄影师头像为绿底白字首字母样式 -->
+              <div
+                class="w-16 h-16 bg-primary text-white rounded-full mr-4 flex-shrink-0 flex items-center justify-center text-2xl font-bold uppercase"
+              >
+                {{
+                  bookingDetails.photographerName ? bookingDetails.photographerName.charAt(0) : '?'
+                }}
               </div>
               <div>
                 <div class="font-medium text-primary">{{ bookingDetails.photographerName }}</div>
@@ -332,6 +509,13 @@ export default defineComponent({
     const bookingDetails = ref<any>(null)
     const loading = ref(true)
     const error = ref('')
+
+    // 照片相关状态
+    const photos = ref<any[]>([])
+    const loadingPhotos = ref(false)
+    const photoError = ref('')
+    const showPhotos = ref(false)
+    const currentViewingPhoto = ref<any>(null)
 
     // 计算属性 - 是否是户外拍摄
     const isOutdoorShoot = computed(() => {
@@ -444,6 +628,180 @@ export default defineComponent({
       }
     }
 
+    // 获取预约关联的照片
+    const fetchBookingPhotos = async () => {
+      loadingPhotos.value = true
+      photoError.value = ''
+
+      try {
+        console.log(`正在获取预约照片，预约ID: ${bookingId.value}`)
+        const response = await apiClient.get(`/Photo/booking/${bookingId.value}`)
+
+        // 为每张照片添加错误状态标记
+        photos.value = response.data.map((photo: any) => ({
+          ...photo,
+          hasError: false,
+        }))
+
+        console.log('获取到照片数量:', photos.value.length)
+
+        // 添加日志输出每张照片的URL，方便调试
+        if (photos.value.length > 0) {
+          console.log('照片详情:')
+          photos.value.forEach((photo, index) => {
+            const fullThumbnailUrl = getFullImageUrl(photo.thumbnailUrl)
+            const fullOriginalUrl = photo.originalUrl
+              ? getFullImageUrl(photo.originalUrl)
+              : '无原图地址'
+
+            console.log(`照片 #${index + 1}:`, {
+              id: photo.photoId,
+              name: photo.photoName,
+              thumbnail: photo.thumbnailUrl,
+              thumbnailFull: fullThumbnailUrl,
+              original: photo.originalUrl || '无原图地址',
+              originalFull: fullOriginalUrl,
+              valid: validateImageUrl(photo.thumbnailUrl),
+            })
+          })
+        }
+      } catch (err: any) {
+        console.error('获取照片失败:', err)
+        photoError.value = '获取照片失败，请稍后再试'
+      } finally {
+        loadingPhotos.value = false
+      }
+    }
+
+    // 查看照片
+    const viewPhotos = () => {
+      showPhotos.value = true
+      if (photos.value.length === 0 && !loadingPhotos.value) {
+        fetchBookingPhotos()
+      }
+    }
+
+    // 打开照片详情
+    const openPhotoDetail = (index: number) => {
+      // 这里可以实现查看大图功能，例如打开弹窗或导航到照片详情页
+      console.log('查看照片详情，索引:', index)
+      alert(`查看照片详情: ${photos.value[index].photoName || '照片 ' + (index + 1)}`)
+      // 如果有照片详情页，可以导航到该页面
+      // router.push(`/photo/${photos.value[index].photoId}`)
+    }
+
+    // 处理图片加载错误
+    const handleImageError = (event: Event, index: number) => {
+      console.error(`照片 #${index + 1} 加载失败:`, photos.value[index].thumbnailUrl)
+      // 标记该照片有错误
+      photos.value[index].hasError = true
+    }
+
+    // 验证图片URL是否有效
+    const validateImageUrl = (url: string): boolean => {
+      if (!url) return false
+
+      // 简单验证URL格式
+      return (
+        url.startsWith('http://') ||
+        url.startsWith('https://') ||
+        url.startsWith('/') ||
+        url.startsWith('./') ||
+        url.startsWith('../')
+      )
+    }
+
+    // 获取完整图片URL
+    const getFullImageUrl = (url: string): string => {
+      if (!url) return ''
+
+      // 如果已经是完整URL，直接返回
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        return url
+      }
+
+      // 如果是相对路径，添加基础URL
+      // 这里根据你的API返回数据格式调整
+      // 假设环境变量中有API基础URL配置
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || window.location.origin
+
+      // 处理不同格式的相对路径
+      if (url.startsWith('/')) {
+        return `${baseUrl}${url}`
+      } else {
+        return `${baseUrl}/${url}`
+      }
+    }
+
+    // 格式化照片日期
+    const formatPhotoDate = (dateString: string): string => {
+      if (!dateString) return '未知时间'
+      const date = new Date(dateString)
+      return new Intl.DateTimeFormat('zh-CN', {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: 'numeric',
+      }).format(date)
+    }
+
+    // 获取API基础URL
+    const getApiBaseUrl = (): string => {
+      return import.meta.env.VITE_API_BASE_URL || ''
+    }
+
+    // 获取静态资源URL - 用于图片等静态资源
+    const getStaticAssetUrl = (path: string): string => {
+      if (!path) return ''
+
+      // 如果已经是完整URL，直接返回
+      if (path.startsWith('http://') || path.startsWith('https://')) {
+        return path
+      }
+
+      // 使用静态资源URL作为基础URL
+      const staticBaseUrl = import.meta.env.VITE_STATIC_ASSETS_URL || window.location.origin
+
+      // 处理不同格式的相对路径
+      if (path.startsWith('/')) {
+        return `${staticBaseUrl}${path}`
+      } else {
+        return `${staticBaseUrl}/${path}`
+      }
+    }
+
+    // 打开照片查看器
+    const openPhotoViewer = (photo: any) => {
+      currentViewingPhoto.value = photo
+    }
+
+    // 关闭照片查看器
+    const closePhotoViewer = () => {
+      currentViewingPhoto.value = null
+    }
+
+    // 下载单张照片
+    const downloadPhoto = (photo: any) => {
+      const link = document.createElement('a')
+      link.href = getStaticAssetUrl(photo.imageUrl)
+      link.download = photo.title || `photo-${photo.photoId}.jpg`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    }
+
+    // 下载所有照片
+    const downloadAllPhotos = () => {
+      if (!confirm('确定要下载所有照片吗？')) return
+
+      photos.value.forEach((photo, index) => {
+        // 延迟下载，避免浏览器阻止多个下载
+        setTimeout(() => {
+          downloadPhoto(photo)
+        }, index * 300)
+      })
+    }
+
     onMounted(() => {
       fetchBookingDetails()
     })
@@ -459,6 +817,25 @@ export default defineComponent({
       fetchBookingDetails,
       cancelBooking,
       viewAlbum,
+      // 新增的照片相关属性和方法
+      photos,
+      loadingPhotos,
+      photoError,
+      showPhotos,
+      currentViewingPhoto,
+      fetchBookingPhotos,
+      viewPhotos,
+      openPhotoDetail,
+      getFullImageUrl,
+      validateImageUrl,
+      handleImageError,
+      formatPhotoDate,
+      getApiBaseUrl,
+      getStaticAssetUrl,
+      openPhotoViewer,
+      closePhotoViewer,
+      downloadPhoto,
+      downloadAllPhotos,
     }
   },
 })

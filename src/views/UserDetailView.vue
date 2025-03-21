@@ -458,6 +458,7 @@ export default defineComponent({
         const response = await userAPI.getUserPublicProfile(userId)
 
         console.log('获取到用户数据:', response.data)
+        console.log('用户角色信息:', response.data.roles)
 
         // 更新用户基本信息
         const userData = response.data
@@ -474,10 +475,54 @@ export default defineComponent({
           following: userData.followingCount || 0,
           isFollowedByCurrentUser: userData.isFollowedByCurrentUser || false, // 从API响应中获取关注状态
 
-          // 检查用户角色
-          isRetoucher: userData.roles?.includes('Retoucher') || false,
-          isPhotographer: userData.roles?.includes('Photographer') || false,
+          // 检查用户角色 - 改进角色检测方法
+          isRetoucher:
+            userData.roles?.some((r) =>
+              typeof r === 'string'
+                ? r.toLowerCase() === 'retoucher'
+                : r?.name?.toLowerCase() === 'retoucher',
+            ) || false,
+          isPhotographer:
+            userData.roles?.some((r) =>
+              typeof r === 'string'
+                ? r.toLowerCase() === 'photographer'
+                : r?.name?.toLowerCase() === 'photographer',
+            ) || false,
         }
+
+        console.log('解析后的角色状态:', {
+          isRetoucher: user.value.isRetoucher,
+          isPhotographer: user.value.isPhotographer,
+        })
+
+        // 如果角色检测失败，尝试通过ID接口确认
+        try {
+          // 尝试获取photographerId，如果成功说明用户是摄影师
+          const photographerIdResponse = await userAPI.getPhotographerId(userId)
+          if (photographerIdResponse.data && photographerIdResponse.data.photographerId) {
+            console.log('通过ID接口确认用户是摄影师')
+            user.value.isPhotographer = true
+          }
+        } catch (err) {
+          console.log('用户不是摄影师或获取摄影师ID失败')
+        }
+
+        try {
+          // 尝试获取retoucherId，如果成功说明用户是修图师
+          const retoucherIdResponse = await userAPI.getRetoucherId(userId)
+          if (retoucherIdResponse.data && retoucherIdResponse.data.retoucherId) {
+            console.log('通过ID接口确认用户是修图师')
+            user.value.isRetoucher = true
+          }
+        } catch (err) {
+          console.log('用户不是修图师或获取修图师ID失败')
+        }
+
+        // 再次输出确认角色状态
+        console.log('最终确认的角色状态:', {
+          isRetoucher: user.value.isRetoucher,
+          isPhotographer: user.value.isPhotographer,
+        })
 
         // 如果用户是修图师，获取修图师信息
         if (user.value.isRetoucher) {
@@ -534,17 +579,26 @@ export default defineComponent({
         const photographerIdResponse = await userAPI.getPhotographerId(userId)
         const photographerId = photographerIdResponse.data.photographerId
 
+        console.log('获取到摄影师ID:', photographerId)
+
+        if (!photographerId) {
+          console.error('未能获取到有效的摄影师ID')
+          return
+        }
+
         // 获取摄影师详情
         const photographerResponse = await photographerAPI.getPhotographerById(photographerId)
         const photographerData = photographerResponse.data
+
+        console.log('获取到摄影师详情:', photographerData)
 
         // 更新摄影师信息
         user.value.photographerInfo = {
           categories:
             photographerData.specialties?.split(',').map((item: string) => item.trim()) || [],
           experience: getExperienceLevel(photographerData.experience || 0),
-          equipment: photographerData.equipment,
-          bio: photographerData.bio,
+          equipment: photographerData.equipment || '未提供设备信息',
+          bio: photographerData.bio || '未提供摄影师简介',
           priceRangeMin: photographerData.priceRangeMin || 0,
           priceRangeMax: photographerData.priceRangeMax || 0,
         }
