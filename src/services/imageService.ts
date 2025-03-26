@@ -53,6 +53,20 @@ export const imageProcessingAPI = {
       },
     })
   },
+
+  // 调整图像大小
+  resizeImage: (file: File, width: number, height: number) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('width', width.toString())
+    formData.append('height', height.toString())
+
+    return apiClient.post('/ImageProcessing/resize', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    })
+  },
 }
 
 export default imageProcessingAPI

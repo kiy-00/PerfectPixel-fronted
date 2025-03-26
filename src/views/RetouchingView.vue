@@ -221,6 +221,7 @@
                 v-model="resizeWidth"
                 placeholder="宽度"
                 class="w-full p-2 border border-neutral rounded-md text-sm"
+                :disabled="isResizing"
               />
             </div>
             <div>
@@ -230,6 +231,7 @@
                 v-model="resizeHeight"
                 placeholder="高度"
                 class="w-full p-2 border border-neutral rounded-md text-sm"
+                :disabled="isResizing"
               />
             </div>
           </div>
@@ -240,6 +242,7 @@
                 type="checkbox"
                 v-model="maintainAspectRatio"
                 class="form-checkbox h-4 w-4 text-primary"
+                :disabled="isResizing"
               />
               <span class="ml-2 text-sm text-neutral-dark">保持宽高比</span>
             </label>
@@ -247,9 +250,33 @@
 
           <button
             @click="resizeImage"
-            class="w-full p-2 border border-primary text-primary rounded-md hover:bg-green-light hover:bg-opacity-10 transition-colors"
+            :disabled="isResizing"
+            class="w-full p-2 border border-primary text-primary rounded-md hover:bg-green-light hover:bg-opacity-10 transition-colors relative"
           >
-            调整大小
+            <span v-if="!isResizing">调整大小</span>
+            <span v-else class="flex items-center justify-center">
+              <svg
+                class="animate-spin -ml-1 mr-2 h-4 w-4 text-primary"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  class="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  stroke-width="4"
+                ></circle>
+                <path
+                  class="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+              正在处理...
+            </span>
           </button>
         </div>
 
@@ -516,8 +543,8 @@
 
 <script lang="ts">
 import { defineComponent, ref, reactive, onMounted, onUnmounted, nextTick, watch } from 'vue'
-// 导入apiClient用于API调用
-import apiClient from '@/services/apiService'
+// 导入图像处理服务
+import { imageProcessingAPI } from '../services/imageService'
 
 export default defineComponent({
   name: 'RetouchingView',
@@ -1364,6 +1391,7 @@ export default defineComponent({
     const resizeWidth = ref<number | null>(null)
     const resizeHeight = ref<number | null>(null)
     const maintainAspectRatio = ref(true)
+    const isResizing = ref(false)
 
     const resizeImage = () => {
       if (!imageUrl.value || !originalImage.value || (!resizeWidth.value && !resizeHeight.value)) {
@@ -1371,26 +1399,103 @@ export default defineComponent({
         return
       }
 
+      // 确保尺寸有效
+      const newWidth = resizeWidth.value || originalImage.value.naturalWidth
+      const newHeight = resizeHeight.value || originalImage.value.naturalHeight
+
+      // 保持宽高比
+      let finalWidth = newWidth
+      let finalHeight = newHeight
+
+      if (maintainAspectRatio.value && originalImage.value) {
+        const originalWidth = originalImage.value.naturalWidth
+        const originalHeight = originalImage.value.naturalHeight
+
+        if (resizeWidth.value && !resizeHeight.value) {
+          finalHeight = Math.round((originalHeight / originalWidth) * finalWidth)
+        } else if (!resizeWidth.value && resizeHeight.value) {
+          finalWidth = Math.round((originalWidth / originalHeight) * finalHeight)
+        }
+      }
+
+      // 设置调整尺寸的方式：API调用
+      isResizing.value = true
+      console.log(`开始调整图像大小为: ${finalWidth}x${finalHeight}`)
+
       try {
+        // 将Data URL转换为Blob
+        const dataURLtoBlob = (dataurl: string): Blob => {
+          const arr = dataurl.split(',')
+          const mime = arr[0].match(/:(.*?);/)![1]
+          const bstr = atob(arr[1])
+          let n = bstr.length
+          const u8arr = new Uint8Array(n)
+          while (n--) {
+            u8arr[n] = bstr.charCodeAt(n)
+          }
+          return new Blob([u8arr], { type: mime })
+        }
+
+        // 准备API调用数据
+        const imageBlob = dataURLtoBlob(imageUrl.value)
+        const imageFile = new File([imageBlob], 'image.jpg', { type: 'image/jpeg' })
+
+        // 使用图像服务调用API
+        imageProcessingAPI
+          .resizeImage(imageFile, finalWidth, finalHeight)
+          .then((response) => {
+            console.log('调整图像大小成功:', response.data)
+            const data = response.data
+
+            if (data.url) {
+              // 预加载图片以确保URL有效
+              const testImg = new Image()
+              testImg.onload = () => {
+                // 更新图像URL
+                imageUrl.value = data.url
+                processedImageUrl.value = ''
+
+                // 显示成功消息
+                alert(data.message || `图像已成功调整为 ${finalWidth}x${finalHeight}`)
+
+                // 重新加载图片以触发onload事件
+                nextTick(() => {
+                  console.log('调整大小后的图片已成功加载')
+                })
+              }
+              testImg.onerror = () => {
+                console.error('调整大小后的图片加载失败，降级到本地处理')
+                resizeImageLocally(finalWidth, finalHeight)
+              }
+              testImg.src = data.url
+            } else {
+              console.error('后端未返回有效的图片URL')
+              resizeImageLocally(finalWidth, finalHeight)
+            }
+          })
+          .catch((error) => {
+            console.error('调整图像大小API调用失败:', error)
+            alert(`调整图像大小失败: ${error.message || '未知错误'}，将使用本地处理`)
+            resizeImageLocally(finalWidth, finalHeight)
+          })
+          .finally(() => {
+            isResizing.value = false
+          })
+      } catch (error) {
+        console.error('准备调整图像大小数据失败:', error)
+        isResizing.value = false
+        resizeImageLocally(finalWidth, finalHeight)
+      }
+    }
+
+    // 本地调整图像大小方法(作为备用)
+    const resizeImageLocally = (newWidth: number, newHeight: number) => {
+      try {
+        console.log('使用本地Canvas调整图像大小...')
         const canvas = document.createElement('canvas')
         const ctx = canvas.getContext('2d')
 
         if (ctx && originalImage.value) {
-          const originalWidth = originalImage.value.naturalWidth
-          const originalHeight = originalImage.value.naturalHeight
-
-          let newWidth = resizeWidth.value || originalWidth
-          let newHeight = resizeHeight.value || originalHeight
-
-          // 保持宽高比
-          if (maintainAspectRatio.value) {
-            if (resizeWidth.value && !resizeHeight.value) {
-              newHeight = (originalHeight / originalWidth) * newWidth
-            } else if (!resizeWidth.value && resizeHeight.value) {
-              newWidth = (originalWidth / originalHeight) * newHeight
-            }
-          }
-
           // 设置画布大小
           canvas.width = newWidth
           canvas.height = newHeight
@@ -1407,10 +1512,10 @@ export default defineComponent({
             applyFilters()
           })
 
-          console.log(`图像已调整至 ${newWidth}x${newHeight}`)
+          console.log(`图像已本地调整至 ${newWidth}x${newHeight}`)
         }
       } catch (error) {
-        console.error('调整图像大小出错:', error)
+        console.error('本地调整图像大小出错:', error)
         alert('调整图像大小时出错，请重试')
       }
     }
@@ -1687,6 +1792,7 @@ export default defineComponent({
       resizeWidth,
       resizeHeight,
       maintainAspectRatio,
+      isResizing,
       compressionQuality,
       faceCount,
       imageQualityScore,
