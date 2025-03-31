@@ -88,9 +88,41 @@
               max="100"
               step="1"
               class="w-full h-2 bg-neutral rounded-lg appearance-none cursor-pointer"
+              :disabled="isSharpening"
               @input="requestAdjustments"
             />
           </div>
+
+          <button
+            @click="applySharpen"
+            :disabled="isSharpening"
+            class="w-full p-2 border border-primary text-primary rounded-md hover:bg-green-light hover:bg-opacity-10 transition-colors relative"
+          >
+            <span v-if="!isSharpening">应用锐化</span>
+            <span v-else class="flex items-center justify-center">
+              <svg
+                class="animate-spin -ml-1 mr-2 h-4 w-4 text-primary"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  class="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  stroke-width="4"
+                ></circle>
+                <path
+                  class="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+              正在锐化...
+            </span>
+          </button>
         </div>
 
         <!-- 滤镜效果 -->
@@ -296,15 +328,75 @@
               max="100"
               step="1"
               class="w-full h-2 bg-neutral rounded-lg appearance-none cursor-pointer"
+              :disabled="isCompressing"
             />
           </div>
 
           <button
             @click="compressImage"
-            class="w-full p-2 border border-primary text-primary rounded-md hover:bg-green-light hover:bg-opacity-10 transition-colors"
+            :disabled="isCompressing"
+            class="w-full p-2 border border-primary text-primary rounded-md hover:bg-green-light hover:bg-opacity-10 transition-colors relative"
           >
-            压缩图像
+            <span v-if="!isCompressing">压缩图像</span>
+            <span v-else class="flex items-center justify-center">
+              <svg
+                class="animate-spin -ml-1 mr-2 h-4 w-4 text-primary"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  class="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  stroke-width="4"
+                ></circle>
+                <path
+                  class="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+              正在压缩...
+            </span>
           </button>
+
+          <!-- 如果有压缩结果，显示压缩详情 -->
+          <div
+            v-if="compressionResult"
+            class="mt-3 p-3 bg-neutral bg-opacity-20 rounded-md text-sm"
+          >
+            <div class="flex justify-between items-center mb-2">
+              <span class="font-medium">压缩率:</span>
+              <span class="text-primary font-bold"
+                >{{ compressionResult.compressionRatio.toFixed(2) }}%</span
+              >
+            </div>
+            <div class="mb-2">
+              <div class="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
+                <div
+                  class="h-full rounded-full bg-green-500"
+                  :style="{ width: `${compressionResult.compressionRatio}%` }"
+                ></div>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-2 text-xs mt-2">
+              <div class="flex justify-between">
+                <span class="text-neutral-dark">原始大小:</span>
+                <span class="text-primary">{{
+                  formatFileSize(compressionResult.originalSize)
+                }}</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-neutral-dark">压缩后大小:</span>
+                <span class="text-primary">{{
+                  formatFileSize(compressionResult.compressedSize)
+                }}</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- 人脸检测 -->
@@ -564,6 +656,9 @@ export default defineComponent({
     const saturation = ref(0)
     const sharpness = ref(0)
     const selectedFilter = ref('none')
+
+    // 锐化相关
+    const isSharpening = ref(false)
 
     // 滤镜列表
     const filters = [
@@ -1522,6 +1617,23 @@ export default defineComponent({
 
     // 压缩图像
     const compressionQuality = ref(80)
+    const isCompressing = ref(false)
+    const compressionResult = ref<{
+      message: string
+      originalSize: number
+      compressedSize: number
+      compressionRatio: number
+      photoId: number
+      url: string
+      thumbnailUrl: string
+    } | null>(null)
+
+    // 格式化文件大小的辅助函数
+    const formatFileSize = (bytes: number): string => {
+      if (bytes < 1024) return `${bytes} B`
+      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`
+      return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
+    }
 
     const compressImage = () => {
       if (!imageUrl.value || !originalImage.value) {
@@ -1529,7 +1641,84 @@ export default defineComponent({
         return
       }
 
+      isCompressing.value = true
+      compressionResult.value = null
+
       try {
+        // 将Data URL转换为Blob
+        const dataURLtoBlob = (dataurl: string): Blob => {
+          const arr = dataurl.split(',')
+          const mime = arr[0].match(/:(.*?);/)![1]
+          const bstr = atob(arr[1])
+          let n = bstr.length
+          const u8arr = new Uint8Array(n)
+          while (n--) {
+            u8arr[n] = bstr.charCodeAt(n)
+          }
+          return new Blob([u8arr], { type: mime })
+        }
+
+        // 准备API调用数据
+        const imageBlob = dataURLtoBlob(imageUrl.value)
+        const imageFile = new File([imageBlob], 'image.jpg', { type: 'image/jpeg' })
+
+        // 使用图像服务调用API
+        imageProcessingAPI
+          .compressImage(imageFile, compressionQuality.value)
+          .then((response) => {
+            console.log('图像压缩成功:', response.data)
+            const data = response.data
+
+            // 保存压缩结果
+            compressionResult.value = data
+
+            if (data.url) {
+              // 预加载图片以确保URL有效
+              const testImg = new Image()
+              testImg.onload = () => {
+                // 更新图像URL
+                imageUrl.value = data.url
+                processedImageUrl.value = ''
+
+                // 显示成功消息
+                alert(
+                  data.message || `图像已成功压缩，压缩率: ${data.compressionRatio.toFixed(2)}%`,
+                )
+
+                // 重新加载图片以触发onload事件
+                nextTick(() => {
+                  console.log('压缩后的图片已成功加载')
+                })
+              }
+              testImg.onerror = () => {
+                console.error('压缩后的图片加载失败，降级到本地处理')
+                compressImageLocally()
+              }
+              testImg.src = data.url
+            } else {
+              console.error('后端未返回有效的图片URL')
+              compressImageLocally()
+            }
+          })
+          .catch((error) => {
+            console.error('图像压缩API调用失败:', error)
+            alert(`图像压缩失败: ${error.message || '未知错误'}，将使用本地处理`)
+            compressImageLocally()
+          })
+          .finally(() => {
+            isCompressing.value = false
+          })
+      } catch (error) {
+        console.error('准备图像压缩数据失败:', error)
+        isCompressing.value = false
+        compressImageLocally()
+      }
+    }
+
+    // 本地压缩图像方法(作为备用)
+    const compressImageLocally = () => {
+      try {
+        console.log('使用本地Canvas压缩图像...')
         const canvas = document.createElement('canvas')
         const ctx = canvas.getContext('2d')
 
@@ -1540,9 +1729,31 @@ export default defineComponent({
           // 绘制图像
           ctx.drawImage(originalImage.value, 0, 0)
 
+          // 获取原始图像大小的估计值（Data URL长度的3/4作为估计）
+          const originalSize = Math.floor((imageUrl.value.length * 3) / 4)
+
           // 以指定质量导出
           const quality = compressionQuality.value / 100
           const compressedImageUrl = canvas.toDataURL('image/jpeg', quality)
+
+          // 获取压缩后图像大小的估计值
+          const compressedSize = Math.floor((compressedImageUrl.length * 3) / 4)
+
+          // 计算压缩率
+          const compressionRatio = Math.round(
+            ((originalSize - compressedSize) / originalSize) * 100,
+          )
+
+          // 创建模拟的压缩结果
+          compressionResult.value = {
+            message: `成功压缩图像，质量：${compressionQuality.value}%，压缩率：${compressionRatio}%`,
+            originalSize: originalSize,
+            compressedSize: compressedSize,
+            compressionRatio: compressionRatio,
+            photoId: 0,
+            url: compressedImageUrl,
+            thumbnailUrl: compressedImageUrl,
+          }
 
           // 更新图像
           imageUrl.value = compressedImageUrl
@@ -1553,10 +1764,12 @@ export default defineComponent({
             applyFilters()
           })
 
-          console.log(`图像已压缩至 ${compressionQuality.value}% 质量`)
+          console.log(
+            `图像已本地压缩至 ${compressionQuality.value}% 质量，压缩率: ${compressionRatio}%`,
+          )
         }
       } catch (error) {
-        console.error('压缩图像出错:', error)
+        console.error('本地压缩图像出错:', error)
         alert('压缩图像时出错，请重试')
       }
     }
@@ -1711,6 +1924,124 @@ export default defineComponent({
       }
     }
 
+    // 应用锐化功能
+    const applySharpen = () => {
+      if (!imageUrl.value || !originalImage.value) {
+        alert('请先上传图片')
+        return
+      }
+
+      isSharpening.value = true
+
+      try {
+        // 将Data URL转换为Blob
+        const dataURLtoBlob = (dataurl: string): Blob => {
+          const arr = dataurl.split(',')
+          const mime = arr[0].match(/:(.*?);/)![1]
+          const bstr = atob(arr[1])
+          let n = bstr.length
+          const u8arr = new Uint8Array(n)
+          while (n--) {
+            u8arr[n] = bstr.charCodeAt(n)
+          }
+          return new Blob([u8arr], { type: mime })
+        }
+
+        // 准备API调用数据
+        const imageBlob = dataURLtoBlob(imageUrl.value)
+        const imageFile = new File([imageBlob], 'image.jpg', { type: 'image/jpeg' })
+
+        // 使用图像服务调用API
+        imageProcessingAPI
+          .sharpenImage(imageFile)
+          .then((response) => {
+            console.log('图像锐化成功:', response.data)
+            const data = response.data
+
+            if (data.url) {
+              // 预加载图片以确保URL有效
+              const testImg = new Image()
+              testImg.onload = () => {
+                // 更新图像URL
+                imageUrl.value = data.url
+                processedImageUrl.value = ''
+
+                // 显示成功消息
+                alert(data.message || '图像已成功锐化')
+
+                // 重新加载图片以触发onload事件
+                nextTick(() => {
+                  console.log('锐化后的图片已成功加载')
+                })
+              }
+              testImg.onerror = () => {
+                console.error('锐化后的图片加载失败，降级到本地处理')
+                applySharpenLocally()
+              }
+              testImg.src = data.url
+            } else {
+              console.error('后端未返回有效的图片URL')
+              applySharpenLocally()
+            }
+          })
+          .catch((error) => {
+            console.error('图像锐化API调用失败:', error)
+            alert(`图像锐化失败: ${error.message || '未知错误'}，将使用本地处理`)
+            applySharpenLocally()
+          })
+          .finally(() => {
+            isSharpening.value = false
+          })
+      } catch (error) {
+        console.error('准备图像锐化数据失败:', error)
+        isSharpening.value = false
+        applySharpenLocally()
+      }
+    }
+
+    // 本地锐化图像方法(作为备用)
+    const applySharpenLocally = () => {
+      try {
+        console.log('使用本地Canvas锐化图像...')
+        const canvas = document.createElement('canvas')
+        const ctx = canvas.getContext('2d')
+
+        if (ctx && originalImage.value) {
+          canvas.width = originalImage.value.naturalWidth
+          canvas.height = originalImage.value.naturalHeight
+
+          // 绘制原始图像
+          ctx.drawImage(originalImage.value, 0, 0)
+
+          // 在本地简单模拟锐化效果
+          // 注意：这不是真正的锐化算法，只是视觉上的模拟
+          const intensity = sharpness.value / 100
+          ctx.shadowColor = 'black'
+          ctx.shadowBlur = 10 * intensity
+          ctx.drawImage(originalImage.value, 0, 0)
+
+          // 添加一个指示标记
+          ctx.font = '14px Arial'
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'
+          ctx.fillText(`锐化程度: ${sharpness.value}% (本地模拟)`, 10, canvas.height - 20)
+
+          // 更新图像
+          imageUrl.value = canvas.toDataURL('image/jpeg')
+          processedImageUrl.value = ''
+
+          // 重新加载图片以触发onload事件
+          nextTick(() => {
+            applyFilters()
+          })
+
+          console.log(`图像已本地锐化, 程度: ${sharpness.value}%`)
+        }
+      } catch (error) {
+        console.error('本地锐化图像出错:', error)
+        alert('锐化图像时出错，请重试')
+      }
+    }
+
     // 事件监听器清理
     onMounted(() => {
       window.addEventListener('resize', () => {
@@ -1794,6 +2125,10 @@ export default defineComponent({
       maintainAspectRatio,
       isResizing,
       compressionQuality,
+      isCompressing,
+      compressionResult,
+      formatFileSize,
+      compressImage,
       faceCount,
       imageQualityScore,
       imageQualityDetails,
@@ -1805,6 +2140,8 @@ export default defineComponent({
       isAnalyzing,
       imageQualityResult,
       getQualityColor,
+      isSharpening,
+      applySharpen,
     }
   },
 })

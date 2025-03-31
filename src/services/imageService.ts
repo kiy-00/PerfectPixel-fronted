@@ -67,6 +67,31 @@ export const imageProcessingAPI = {
       },
     })
   },
+
+  // 压缩图像
+  compressImage: (file: File, quality: number) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('quality', quality.toString())
+
+    return apiClient.post('/ImageProcessing/compress', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    })
+  },
+
+  // 锐化图像
+  sharpenImage: (file: File) => {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    return apiClient.post('/ImageProcessing/sharpen', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    })
+  },
 }
 
 export default imageProcessingAPI
