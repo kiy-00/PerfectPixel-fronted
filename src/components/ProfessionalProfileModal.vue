@@ -163,11 +163,12 @@ export default defineComponent({
     profileType: {
       type: String,
       required: true,
-      validator: (value: string) => ['photographer', 'retoucher'].includes(value),
+      validator: (value: string) => ['photographer', 'retoucher', ''].includes(value),
     },
     profileData: {
-      type: Object,
+      type: [Object, null],
       required: true,
+      default: () => ({}),
     },
   },
   emits: ['close', 'save'],

@@ -470,7 +470,7 @@
       </div>
 
       <!-- 添加调试信息 - 仅在开发环境显示 -->
-      <div
+      <!-- <div
         v-if="isDevelopment"
         class="container mx-auto mt-4 p-4 bg-error bg-opacity-10 rounded-lg text-red"
       >
@@ -492,7 +492,7 @@
           <p>第一个作品集封面URL: {{ retoucherPortfolios[0].coverImageUrl }}</p>
           <p>处理后的封面URL: {{ getImageUrl(retoucherPortfolios[0].coverImageUrl) }}</p>
         </div>
-      </div>
+      </div> -->
     </template>
   </div>
 </template>

@@ -50,15 +50,16 @@
 
                 <div class="mt-4 flex items-center justify-center md:justify-start space-x-4">
                   <button
+                    @click="openUserProfileModal"
                     class="bg-white text-primary px-4 py-2 rounded-md font-medium hover:bg-green-light transition-colors"
                   >
                     编辑资料
                   </button>
-                  <button
+                  <!-- <button
                     class="bg-transparent border border-white text-white px-4 py-2 rounded-md font-medium hover:bg-green-dark transition-colors"
                   >
                     联系我
-                  </button>
+                  </button> -->
                 </div>
               </div>
             </div>
@@ -98,8 +99,14 @@
                 <h2 class="text-xl font-semibold text-neutral-dark mb-4">统计数据</h2>
                 <div class="grid grid-cols-3 gap-4 text-center">
                   <div>
-                    <div class="text-2xl font-bold text-primary">{{ photoCount }}</div>
-                    <div class="text-sm text-neutral-dark">作品</div>
+                    <div class="text-2xl font-bold text-primary">
+                      {{ photographerPortfolioCount }}
+                    </div>
+                    <div class="text-sm text-neutral-dark">摄影作品</div>
+                  </div>
+                  <div>
+                    <div class="text-2xl font-bold text-primary">{{ retoucherPortfolioCount }}</div>
+                    <div class="text-sm text-neutral-dark">修图作品</div>
                   </div>
                   <div>
                     <div class="text-2xl font-bold text-primary">
@@ -477,10 +484,16 @@
         :is-open="isProfileModalOpen"
         :profile-type="activeProfileType"
         :profile-data="
-          activeProfileType === 'photographer' ? photographerDetails : retoucherDetails
+          activeProfileType === 'photographer' ? photographerDetails || {} : retoucherDetails || {}
         "
         @close="closeProfileModal"
         @save="saveProfileChanges"
+      />
+      <UserProfileEditModal
+        :is-open="isUserProfileModalOpen"
+        :user-data="userStore.userInfo"
+        @close="closeUserProfileModal"
+        @save="saveUserProfileChanges"
       />
     </div>
   </div>
@@ -493,12 +506,14 @@ import { retoucherPortfolioAPI, photographerPortfolioAPI } from '../services/api
 import apiClient from '../services/apiService.ts' // 确保路径正确
 import ProfessionalProfileModal from '../components/ProfessionalProfileModal.vue' // 确保路径正确
 import SideBar from '../components/SideBar.vue'
+import UserProfileEditModal from '../components/UserProfileEditModal.vue'
 
 export default defineComponent({
   name: 'UserProfileView',
   components: {
     ProfessionalProfileModal, // 在这里注册组件
     SideBar, // 注册侧边栏组件
+    UserProfileEditModal, // 注册用户资料编辑模态框组件
   },
   setup() {
     // 使用用户信息存储
@@ -508,8 +523,9 @@ export default defineComponent({
     const loading = ref(false)
     const error = ref('')
 
-    // 模拟统计数据 - 只保留照片数，其他使用真实数据
-    const photoCount = ref(48)
+    // 作品集数量统计
+    const photographerPortfolioCount = ref(0)
+    const retoucherPortfolioCount = ref(0)
 
     // 活动作品集标签
     const activePortfolioTab = ref('photography')
@@ -525,6 +541,38 @@ export default defineComponent({
     const photographyPortfolio = ref([])
 
     const retoucherPublicPortfolios = ref([])
+
+    // 获取摄影师作品集数量
+    const fetchPhotographerPortfolioCount = async () => {
+      if (userStore.photographerId) {
+        try {
+          console.log('获取摄影师作品集数量, photographerId:', userStore.photographerId)
+          const response = await apiClient.get(
+            `photographer-portfolios/photographer/${userStore.photographerId}/public-count`,
+          )
+          photographerPortfolioCount.value = response.data.publicPortfolioCount
+          console.log('摄影师作品集数量:', photographerPortfolioCount.value)
+        } catch (err) {
+          console.error('获取摄影师作品集数量失败:', err)
+        }
+      }
+    }
+
+    // 获取修图师作品集数量
+    const fetchRetoucherPortfolioCount = async () => {
+      if (userStore.retoucherId) {
+        try {
+          console.log('获取修图师作品集数量, retoucherId:', userStore.retoucherId)
+          const response = await apiClient.get(
+            `retoucher-portfolios/retoucher/${userStore.retoucherId}/public-count`,
+          )
+          retoucherPortfolioCount.value = response.data.publicPortfolioCount
+          console.log('修图师作品集数量:', retoucherPortfolioCount.value)
+        } catch (err) {
+          console.error('获取修图师作品集数量失败:', err)
+        }
+      }
+    }
 
     // 添加获取修图师作品集的方法
     // 添加获取修图师作品集的方法
@@ -722,6 +770,41 @@ export default defineComponent({
       }
     }
 
+    // 用户资料编辑模态框状态
+    const isUserProfileModalOpen = ref(false)
+
+    // 打开用户资料编辑模态框
+    const openUserProfileModal = () => {
+      isUserProfileModalOpen.value = true
+    }
+
+    // 关闭用户资料编辑模态框
+    const closeUserProfileModal = () => {
+      isUserProfileModalOpen.value = false
+    }
+
+    // 保存用户资料更改
+    const saveUserProfileChanges = async (updatedData) => {
+      try {
+        console.log('更新用户资料:', updatedData)
+
+        // 调用API更新用户信息
+        await apiClient.put(`/User`, updatedData)
+
+        // 更新本地存储的用户信息
+        if (userStore.userInfo) {
+          userStore.userInfo = { ...userStore.userInfo, ...updatedData }
+          // 保存到本地存储，使用正确的方法名
+          userStore.updateUserStorage()
+        }
+
+        alert('用户资料更新成功！')
+      } catch (error) {
+        console.error('更新用户资料失败:', error)
+        alert('更新用户资料失败，请稍后重试')
+      }
+    }
+
     // 在组件挂载时获取用户资料
     onMounted(async () => {
       loading.value = true
@@ -738,11 +821,13 @@ export default defineComponent({
       // 如果用户是修图师，获取作品集
       if (isRetoucher.value) {
         await fetchPublicRetoucherPortfolios()
+        await fetchRetoucherPortfolioCount()
       }
 
       // 如果用户是摄影师，获取摄影师详情
       if (isPhotographer.value && userStore.photographerId) {
         await fetchPhotographerDetails()
+        await fetchPhotographerPortfolioCount()
       }
 
       // 如果用户是修图师，获取修图师详情
@@ -761,7 +846,8 @@ export default defineComponent({
       loading,
       error,
       formatDate,
-      photoCount,
+      photographerPortfolioCount,
+      retoucherPortfolioCount,
       fetchUserProfile,
       activePortfolioTab,
       isPhotographer,
@@ -779,6 +865,10 @@ export default defineComponent({
       closeProfileModal,
       saveProfileChanges,
       fetchPublicPhotographerPortfolios,
+      isUserProfileModalOpen,
+      openUserProfileModal,
+      closeUserProfileModal,
+      saveUserProfileChanges,
     }
   },
 })

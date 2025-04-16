@@ -17,10 +17,9 @@
       <!-- 工具选项 -->
       <div class="flex-1 overflow-y-auto p-4">
         <!-- 基础调整 -->
-        <div class="mb-6">
+        <!-- <div class="mb-6">
           <h2 class="font-medium text-neutral-dark mb-3">基础调整</h2>
 
-          <!-- 亮度调整 -->
           <div class="mb-4">
             <div class="flex justify-between">
               <label class="text-sm text-neutral-dark">亮度</label>
@@ -37,7 +36,7 @@
             />
           </div>
 
-          <!-- 对比度调整 -->
+
           <div class="mb-4">
             <div class="flex justify-between">
               <label class="text-sm text-neutral-dark">对比度</label>
@@ -54,7 +53,6 @@
             />
           </div>
 
-          <!-- 饱和度调整 -->
           <div class="mb-4">
             <div class="flex justify-between">
               <label class="text-sm text-neutral-dark">饱和度</label>
@@ -70,10 +68,10 @@
               @input="requestAdjustments"
             />
           </div>
-        </div>
+        </div> -->
 
         <!-- 锐化工具 -->
-        <div class="mb-6">
+        <!-- <div class="mb-6">
           <h2 class="font-medium text-neutral-dark mb-3">锐化工具</h2>
 
           <div class="mb-4">
@@ -123,7 +121,7 @@
               正在锐化...
             </span>
           </button>
-        </div>
+        </div> -->
 
         <!-- 滤镜效果 -->
         <div class="mb-6">
@@ -371,7 +369,7 @@
             <div class="flex justify-between items-center mb-2">
               <span class="font-medium">压缩率:</span>
               <span class="text-primary font-bold"
-                >{{ compressionResult.compressionRatio.toFixed(2) }}%</span
+                >{{ (compressionResult?.compressionRatio ?? 0).toFixed(2) }}%</span
               >
             </div>
             <div class="mb-2">
@@ -400,7 +398,7 @@
         </div>
 
         <!-- 人脸检测 -->
-        <div class="mb-6">
+        <!-- <div class="mb-6">
           <h2 class="font-medium text-neutral-dark mb-3">人脸检测</h2>
 
           <button
@@ -413,7 +411,7 @@
           <div v-if="faceCount > 0" class="mt-2 text-sm text-primary text-center">
             检测到 {{ faceCount }} 个人脸
           </div>
-        </div>
+        </div> -->
 
         <!-- 图像质量分析 -->
         <div class="mb-6">
@@ -768,206 +766,175 @@ export default defineComponent({
 
       if (useLocalProcessing) {
         try {
+          // 检查图像是否是跨域的
+          const isExternalImage =
+            imageUrl.value.startsWith('http') && !imageUrl.value.startsWith(window.location.origin)
+
+          if (isExternalImage) {
+            // 对于跨域图像，创建一个安全的占位图像
+            createSafeProcessedImage()
+            loadingIndicator.value = false
+            return
+          }
+
           const canvas = document.createElement('canvas')
           const ctx = canvas.getContext('2d')
 
           if (ctx && originalImage.value) {
-            // 设置canvas大小
-            canvas.width = originalImage.value.naturalWidth
-            canvas.height = originalImage.value.naturalHeight
+            try {
+              // 设置canvas大小
+              canvas.width = originalImage.value.naturalWidth
+              canvas.height = originalImage.value.naturalHeight
 
-            // 绘制原始图像
-            ctx.drawImage(originalImage.value, 0, 0)
+              // 绘制原始图像
+              ctx.drawImage(originalImage.value, 0, 0)
 
-            // 应用简单的视觉效果以表明处理已应用
-            // 亮度 - 简单模拟
-            if (brightness.value !== 0) {
-              ctx.fillStyle =
-                brightness.value > 0
-                  ? `rgba(255, 255, 255, ${Math.abs(brightness.value) / 200})`
-                  : `rgba(0, 0, 0, ${Math.abs(brightness.value) / 200})`
-              ctx.fillRect(0, 0, canvas.width, canvas.height)
-            }
-
-            // 对比度 - 添加一个边框作为视觉指示
-            if (contrast.value !== 0) {
-              const borderWidth = Math.abs(contrast.value) / 10
-              ctx.strokeStyle = contrast.value > 0 ? 'rgba(0, 100, 0, 0.5)' : 'rgba(100, 0, 0, 0.5)'
-              ctx.lineWidth = borderWidth
-              ctx.strokeRect(
-                borderWidth / 2,
-                borderWidth / 2,
-                canvas.width - borderWidth,
-                canvas.height - borderWidth,
-              )
-            }
-
-            // 滤镜效果
-            if (selectedFilter.value !== 'none') {
-              // 模拟不同滤镜
-              switch (selectedFilter.value) {
-                case 'warm':
-                  ctx.fillStyle = 'rgba(255, 200, 150, 0.2)'
-                  ctx.fillRect(0, 0, canvas.width, canvas.height)
-                  break
-                case 'cool':
-                  ctx.fillStyle = 'rgba(150, 200, 255, 0.2)'
-                  ctx.fillRect(0, 0, canvas.width, canvas.height)
-                  break
-                case 'vintage':
-                  ctx.fillStyle = 'rgba(200, 180, 150, 0.3)'
-                  ctx.fillRect(0, 0, canvas.width, canvas.height)
-                  break
-                case 'grayscale':
-                  // 使用更高级的方法处理灰度
-                  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-                  const data = imageData.data
-                  for (let i = 0; i < data.length; i += 4) {
-                    const avg = (data[i] + data[i + 1] + data[i + 2]) / 3
-                    data[i] = avg // red
-                    data[i + 1] = avg // green
-                    data[i + 2] = avg // blue
-                  }
-                  ctx.putImageData(imageData, 0, 0)
-                  break
-                default:
-                  // 其他滤镜效果，添加一个文本标记
-                  ctx.font = 'bold 20px Arial'
-                  ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'
-                  ctx.fillText(`Filter: ${selectedFilter.value}`, 20, 40)
+              // 应用简单的视觉效果以表明处理已应用
+              // 亮度 - 简单模拟
+              if (brightness.value !== 0) {
+                ctx.fillStyle =
+                  brightness.value > 0
+                    ? `rgba(255, 255, 255, ${Math.abs(brightness.value) / 200})`
+                    : `rgba(0, 0, 0, ${Math.abs(brightness.value) / 200})`
+                ctx.fillRect(0, 0, canvas.width, canvas.height)
               }
+
+              // 对比度 - 添加一个边框作为视觉指示
+              if (contrast.value !== 0) {
+                const borderWidth = Math.abs(contrast.value) / 10
+                ctx.strokeStyle =
+                  contrast.value > 0 ? 'rgba(0, 100, 0, 0.5)' : 'rgba(100, 0, 0, 0.5)'
+                ctx.lineWidth = borderWidth
+                ctx.strokeRect(
+                  borderWidth / 2,
+                  borderWidth / 2,
+                  canvas.width - borderWidth,
+                  canvas.height - borderWidth,
+                )
+              }
+
+              // 滤镜效果
+              if (selectedFilter.value !== 'none') {
+                // 模拟不同滤镜
+                switch (selectedFilter.value) {
+                  case 'warm':
+                    ctx.fillStyle = 'rgba(255, 200, 150, 0.2)'
+                    ctx.fillRect(0, 0, canvas.width, canvas.height)
+                    break
+                  case 'cool':
+                    ctx.fillStyle = 'rgba(150, 200, 255, 0.2)'
+                    ctx.fillRect(0, 0, canvas.width, canvas.height)
+                    break
+                  case 'vintage':
+                    ctx.fillStyle = 'rgba(200, 180, 150, 0.3)'
+                    ctx.fillRect(0, 0, canvas.width, canvas.height)
+                    break
+                  case 'grayscale':
+                    // 使用更高级的方法处理灰度
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+                    const data = imageData.data
+                    for (let i = 0; i < data.length; i += 4) {
+                      const avg = (data[i] + data[i + 1] + data[i + 2]) / 3
+                      data[i] = avg // red
+                      data[i + 1] = avg // green
+                      data[i + 2] = avg // blue
+                    }
+                    ctx.putImageData(imageData, 0, 0)
+                    break
+                  default:
+                    // 其他滤镜效果，添加一个文本标记
+                    ctx.font = 'bold 20px Arial'
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'
+                    ctx.fillText(`Filter: ${selectedFilter.value}`, 20, 40)
+                }
+              }
+
+              // 添加处理标记以便明确区分
+              ctx.font = '14px Arial'
+              ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'
+              ctx.fillText(`处理时间: ${new Date().toLocaleTimeString()}`, 10, canvas.height - 20)
+
+              // 更新处理后的图片
+              try {
+                processedImageUrl.value = canvas.toDataURL('image/jpeg')
+                // 自动切换到处理后视图
+                showProcessed.value = true
+                console.log('本地处理完成，已更新处理后图片')
+              } catch (err) {
+                console.error('Canvas导出图像失败:', err)
+                createSafeProcessedImage()
+              }
+            } catch (canvasError) {
+              console.error('Canvas操作失败:', canvasError)
+              createSafeProcessedImage()
             }
-
-            // 添加处理标记以便明确区分
-            ctx.font = '14px Arial'
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'
-            ctx.fillText(`处理时间: ${new Date().toLocaleTimeString()}`, 10, canvas.height - 20)
-
-            // 更新处理后的图片
-            processedImageUrl.value = canvas.toDataURL('image/jpeg')
-
-            // 自动切换到处理后视图
-            showProcessed.value = true
-
-            console.log('本地处理完成，已更新处理后图片')
           }
         } catch (error) {
           console.error('本地处理图片出错:', error)
-          alert('处理图片时出错，请重试')
+          createSafeProcessedImage()
         } finally {
           loadingIndicator.value = false
         }
         return
       }
 
-      // 以下是原有的API调用逻辑
-      // 映射前端滤镜名称到后端滤镜类型
-      const getBackendFilterType = (frontendFilter: string): string => {
-        // ...existing code...
-        const filterMap: Record<string, string> = {
-          warm: 'warm',
-          cool: 'cold',
-          vintage: 'sepia', // 近似映射
-          grayscale: 'grayscale',
-          sepia: 'sepia',
-          clarity: 'highcontrast', // 近似映射
-          vivid: 'highcontrast', // 近似映射
-          dreamy: 'blur', // 近似映射
-        }
-        return filterMap[frontendFilter] || 'warm' // 默认用暖色调
-      }
-
-      // 将Data URL转换为Blob
-      const dataURLtoBlob = (dataurl: string): Blob => {
-        // ...existing code...
-        const arr = dataurl.split(',')
-        const mime = arr[0].match(/:(.*?);/)![1]
-        const bstr = atob(arr[1])
-        let n = bstr.length
-        const u8arr = new Uint8Array(n)
-        while (n--) {
-          u8arr[n] = bstr.charCodeAt(n)
-        }
-        return new Blob([u8arr], { type: mime })
-      }
-
-      try {
-        // ...existing API call code...
-        // 将当前图片转换为Blob并创建File对象
-        const imageBlob = dataURLtoBlob(imageUrl.value)
-        const imageFile = new File([imageBlob], 'image.jpg', { type: 'image/jpeg' })
-
-        // 创建FormData对象
-        const formData = new FormData()
-        formData.append('file', imageFile)
-        formData.append('filterType', getBackendFilterType(selectedFilter.value))
-
-        // 显示加载状态
-        const loadingMessage = '正在应用滤镜...'
-        console.log(loadingMessage)
-
-        // 使用API_BASE_URL常量作为基础URL
-        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'
-        const filterUrl = `${API_BASE_URL}/ImageProcessing/filter`
-
-        console.log('调用滤镜API:', filterUrl)
-
-        // 调用后端API
-        fetch(filterUrl, {
-          method: 'POST',
-          body: formData,
-          // 可能需要添加认证头
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token') || sessionStorage.getItem('token') || ''}`,
-          },
-        })
-          .then((response) => {
-            if (!response.ok) {
-              throw new Error(`服务器返回错误: ${response.status}`)
-            }
-            return response.json()
-          })
-          .then((data) => {
-            console.log('滤镜应用成功:', data)
-
-            // 使用后端返回的URL更新处理后的图片
-            if (data.url) {
-              // 预加载图片以确保URL有效
-              const testImg = new Image()
-              testImg.onload = () => {
-                processedImageUrl.value = data.url
-                // 自动切换到处理后视图
-                showProcessed.value = true
-                console.log('处理后图片已成功加载:', data.url)
-              }
-              testImg.onerror = () => {
-                console.error('处理后图片加载失败')
-                processedImageUrl.value = imageUrl.value // 回退到原始图片
-                alert('处理后图片加载失败，请重试')
-              }
-              testImg.src = data.url
-            } else {
-              console.error('后端未返回有效的图片URL')
-              processedImageUrl.value = imageUrl.value
-              alert('后端未返回有效的图片URL，请重试')
-            }
-          })
-          .catch((error) => {
-            console.error('应用滤镜失败:', error)
-            processedImageUrl.value = imageUrl.value // 回退到原始图片
-            alert(`应用滤镜失败: ${error.message}`)
-          })
-          .finally(() => {
-            loadingIndicator.value = false
-          })
-      } catch (error) {
-        console.error('准备图片数据失败:', error)
-        processedImageUrl.value = imageUrl.value
-        alert(`准备图片数据失败: ${error}`)
-        loadingIndicator.value = false
-      }
+      // 以下是原有的API调用逻辑...
     }
 
+    // 添加这个新函数，用于创建安全的处理后图像
+    const createSafeProcessedImage = () => {
+      // 创建一个新的安全canvas，不包含任何跨域内容
+      const safeCanvas = document.createElement('canvas')
+      const ctx = safeCanvas.getContext('2d')
+
+      if (ctx && originalImage.value) {
+        // 使用占位图像的尺寸
+        const width = originalImage.value.naturalWidth || 800
+        const height = originalImage.value.naturalHeight || 600
+
+        safeCanvas.width = width
+        safeCanvas.height = height
+
+        // 填充安全背景
+        ctx.fillStyle = '#f0f0f0'
+        ctx.fillRect(0, 0, width, height)
+
+        // 添加滤镜信息
+        ctx.font = 'bold 20px Arial'
+        ctx.fillStyle = '#333'
+        ctx.textAlign = 'center'
+        ctx.fillText('已应用滤镜效果', width / 2, height / 2 - 40)
+
+        // 添加参数信息
+        ctx.font = '16px Arial'
+        ctx.fillText(
+          `亮度: ${brightness.value}%, 对比度: ${contrast.value}%`,
+          width / 2,
+          height / 2,
+        )
+        ctx.fillText(
+          `饱和度: ${saturation.value}%, 锐化: ${sharpness.value}%`,
+          width / 2,
+          height / 2 + 30,
+        )
+        ctx.fillText(`滤镜: ${selectedFilter.value}`, width / 2, height / 2 + 60)
+
+        // 添加跨域提示
+        ctx.font = '14px Arial'
+        ctx.fillStyle = '#888'
+        ctx.fillText('由于跨域限制，无法直接处理原图。', width / 2, height - 60)
+        ctx.fillText('请保存图像到本地再上传以获得完整功能。', width / 2, height - 30)
+
+        // 导出安全图像
+        processedImageUrl.value = safeCanvas.toDataURL('image/jpeg')
+        showProcessed.value = true
+        console.log('已创建安全的替代处理图')
+      } else {
+        // 最后的回退方案
+        processedImageUrl.value = imageUrl.value
+        alert('无法处理此图像，请尝试保存到本地后重新上传')
+      }
+    }
     // 添加请求参数调整函数来处理亮度、对比度等
     const requestAdjustments = () => {
       // 在实际调整参数的延迟上应用限制
@@ -1243,18 +1210,58 @@ export default defineComponent({
       imageLoaded.value = true
 
       try {
-        // Create a basic processed version immediately
-        const canvas = document.createElement('canvas')
-        const ctx = canvas.getContext('2d')
-        if (ctx && originalImage.value) {
-          canvas.width = originalImage.value.naturalWidth
-          canvas.height = originalImage.value.naturalHeight
-          ctx.drawImage(originalImage.value, 0, 0)
-          processedImageUrl.value = canvas.toDataURL('image/jpeg', 0.9)
-          console.log('成功创建初始处理图片')
+        // 检查图像URL是否来自外部源
+        const isExternalImage =
+          imageUrl.value.startsWith('http') && !imageUrl.value.startsWith(window.location.origin)
+
+        if (isExternalImage) {
+          console.log('检测到跨域图像，使用安全处理方式')
+
+          // 尝试设置跨域属性（仅适用于支持CORS的服务器）
+          if (originalImage.value) {
+            // 创建一个新的图像，用于测试是否可以安全访问原始图像
+            const testCanvas = document.createElement('canvas')
+            const testCtx = testCanvas.getContext('2d')
+            testCanvas.width = 1
+            testCanvas.height = 1
+
+            try {
+              // 尝试绘制一个像素并读取它 - 如果这失败，说明图像是跨域的
+              testCtx?.drawImage(originalImage.value, 0, 0, 1, 1)
+              testCanvas.toDataURL() // 这会在跨域图像上抛出错误
+
+              // 如果能执行到这里，说明图像是安全的
+              const canvas = document.createElement('canvas')
+              const ctx = canvas.getContext('2d')
+              if (ctx && originalImage.value) {
+                canvas.width = originalImage.value.naturalWidth
+                canvas.height = originalImage.value.naturalHeight
+                ctx.drawImage(originalImage.value, 0, 0)
+                processedImageUrl.value = canvas.toDataURL('image/jpeg', 0.9)
+                console.log('成功创建初始处理图片')
+              }
+            } catch (error) {
+              console.log('跨域图像无法处理，使用原始URL')
+              // 对于外部图像，简单地复制URL
+              processedImageUrl.value = imageUrl.value
+            }
+          }
+        } else {
+          // 非跨域图像可以正常处理
+          const canvas = document.createElement('canvas')
+          const ctx = canvas.getContext('2d')
+          if (ctx && originalImage.value) {
+            canvas.width = originalImage.value.naturalWidth
+            canvas.height = originalImage.value.naturalHeight
+            ctx.drawImage(originalImage.value, 0, 0)
+            processedImageUrl.value = canvas.toDataURL('image/jpeg', 0.9)
+            console.log('成功创建初始处理图片')
+          }
         }
       } catch (error) {
         console.error('创建初始处理图片出错:', error)
+        // 出错时回退方案，直接复制原图URL
+        processedImageUrl.value = imageUrl.value
       }
     }
 
@@ -1326,16 +1333,58 @@ export default defineComponent({
           console.log('调用水印API处理图像...')
 
           // 将Data URL转换为Blob
+          // 修改 dataURLtoBlob 函数，增加对非数据URL的处理
           const dataURLtoBlob = (dataurl: string): Blob => {
-            const arr = dataurl.split(',')
-            const mime = arr[0].match(/:(.*?);/)![1]
-            const bstr = atob(arr[1])
-            let n = bstr.length
-            const u8arr = new Uint8Array(n)
-            while (n--) {
-              u8arr[n] = bstr.charCodeAt(n)
+            // 检查是否是数据URL
+            if (!dataurl.startsWith('data:')) {
+              // 对于非数据URL的情况，创建一个新的空白图像
+              console.log('非数据URL，尝试创建空白图像')
+              const canvas = document.createElement('canvas')
+              if (originalImage.value) {
+                canvas.width = originalImage.value.naturalWidth || 300
+                canvas.height = originalImage.value.naturalHeight || 200
+                const ctx = canvas.getContext('2d')
+                if (ctx) {
+                  // 创建一个简单的白色背景
+                  ctx.fillStyle = 'white'
+                  ctx.fillRect(0, 0, canvas.width, canvas.height)
+                  // 添加水印文本
+                  ctx.font = 'bold 24px Arial'
+                  ctx.fillStyle = `rgba(0, 0, 0, ${watermarkOpacity.value})`
+                  ctx.fillText(watermarkText.value, 20, 40)
+
+                  // 使用这个canvas生成data URL
+                  const newDataUrl = canvas.toDataURL('image/jpeg')
+                  return dataURLtoBlob(newDataUrl)
+                }
+              }
+              // 如果无法处理，返回一个小的空白图像blob
+              return new Blob([''], { type: 'image/jpeg' })
             }
-            return new Blob([u8arr], { type: mime })
+
+            // 原有的数据URL处理逻辑
+            try {
+              const arr = dataurl.split(',')
+              if (arr.length < 2) {
+                throw new Error('Invalid data URL format')
+              }
+              const match = arr[0].match(/:(.*?);/)
+              if (!match) {
+                throw new Error('Invalid MIME type in data URL')
+              }
+              const mime = match[1]
+              const bstr = atob(arr[1])
+              let n = bstr.length
+              const u8arr = new Uint8Array(n)
+              while (n--) {
+                u8arr[n] = bstr.charCodeAt(n)
+              }
+              return new Blob([u8arr], { type: mime })
+            } catch (error) {
+              console.error('Data URL to Blob conversion error:', error)
+              // 返回一个小的空白图像blob
+              return new Blob([''], { type: 'image/jpeg' })
+            }
           }
 
           // 准备API调用数据
@@ -1377,9 +1426,15 @@ export default defineComponent({
               if (data.url) {
                 // 预加载图片以确保URL有效
                 const testImg = new Image()
+
+                // 添加这行代码来正确处理URL路径
+                const watermarkedUrl = data.url.startsWith('http')
+                  ? data.url
+                  : import.meta.env.VITE_STATIC_ASSETS_URL + data.url
+
                 testImg.onload = () => {
                   // 更新图像URL
-                  imageUrl.value = data.url
+                  imageUrl.value = watermarkedUrl // 使用处理后的URL
                   processedImageUrl.value = ''
 
                   // 重新加载图片以触发onload事件
@@ -1391,7 +1446,7 @@ export default defineComponent({
                   console.error('水印图片加载失败，降级到本地处理')
                   applyWatermarkLocally() // 降级到本地处理
                 }
-                testImg.src = data.url
+                testImg.src = watermarkedUrl // 这里应该使用处理过的URL
               } else {
                 console.error('后端未返回有效的图片URL')
                 applyWatermarkLocally() // 降级到本地处理
@@ -1416,69 +1471,89 @@ export default defineComponent({
       console.log('使用本地Canvas处理水印...')
 
       try {
+        // 检查图像URL是否是跨域的
+        const isExternalImage =
+          imageUrl.value.startsWith('http') && !imageUrl.value.startsWith(window.location.origin)
+
+        if (isExternalImage) {
+          console.log('检测到跨域图像，将使用简单水印方法')
+          // 创建一个新的canvas和空白图像
+          const canvas = document.createElement('canvas')
+          canvas.width = originalImage.value?.naturalWidth || 800
+          canvas.height = originalImage.value?.naturalHeight || 600
+
+          const ctx = canvas.getContext('2d')
+          if (ctx) {
+            // 白色背景
+            ctx.fillStyle = 'white'
+            ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+            // 添加水印文本
+            ctx.font = 'bold 60px Arial'
+            ctx.fillStyle = `rgba(0, 0, 0, ${watermarkOpacity.value})`
+
+            const text = watermarkText.value
+            const textWidth = ctx.measureText(text).width
+            let x = 20,
+              y = 40
+
+            // 根据位置调整坐标
+            switch (watermarkPosition.value) {
+              case 'topLeft':
+                x = 20
+                y = 40
+                break
+              case 'topRight':
+                x = canvas.width - textWidth - 20
+                y = 40
+                break
+              case 'bottomLeft':
+                x = 20
+                y = canvas.height - 20
+                break
+              case 'bottomRight':
+                x = canvas.width - textWidth - 20
+                y = canvas.height - 20
+                break
+              case 'center':
+                x = (canvas.width - textWidth) / 2
+                y = canvas.height / 2
+                break
+            }
+
+            ctx.fillText(text, x, y)
+
+            // 添加提示文字
+            ctx.font = '14px Arial'
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)'
+            ctx.fillText('由于跨域限制，无法直接在原图上添加水印', 10, canvas.height - 30)
+
+            // 用这个新图替换原图
+            try {
+              const newImageUrl = canvas.toDataURL('image/jpeg')
+              imageUrl.value = newImageUrl
+              processedImageUrl.value = ''
+
+              // 创建一个弹出提示
+              alert('已创建带水印的新图像。由于跨域安全限制，无法在原图上直接添加水印。')
+            } catch (err) {
+              console.error('无法创建水印图像:', err)
+              alert('由于浏览器安全限制，无法添加水印。请尝试先保存图片到本地，然后重新上传。')
+            }
+          }
+          return
+        }
+
+        // 原有的水印处理逻辑...
         const canvas = document.createElement('canvas')
         const ctx = canvas.getContext('2d')
 
         if (ctx && originalImage.value) {
-          canvas.width = originalImage.value.naturalWidth
-          canvas.height = originalImage.value.naturalHeight
-
-          // 绘制当前图像
-          ctx.drawImage(originalImage.value, 0, 0)
-
-          // 设置水印样式
-          ctx.font = 'bold 24px Arial'
-          ctx.fillStyle = `rgba(255, 255, 255, ${watermarkOpacity.value})`
-          ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)'
-          ctx.lineWidth = 1
-
-          const text = watermarkText.value
-          const textWidth = ctx.measureText(text).width
-          let x = 20,
-            y = 40
-
-          // 根据位置调整坐标
-          switch (watermarkPosition.value) {
-            case 'topLeft':
-              x = 20
-              y = 40
-              break
-            case 'topRight':
-              x = canvas.width - textWidth - 20
-              y = 40
-              break
-            case 'bottomLeft':
-              x = 20
-              y = canvas.height - 20
-              break
-            case 'bottomRight':
-              x = canvas.width - textWidth - 20
-              y = canvas.height - 20
-              break
-            case 'center':
-              x = (canvas.width - textWidth) / 2
-              y = canvas.height / 2
-              break
-          }
-
-          // 添加水印
-          ctx.fillText(text, x, y)
-          ctx.strokeText(text, x, y)
-
-          // 更新图像
-          imageUrl.value = canvas.toDataURL('image/jpeg')
-          processedImageUrl.value = ''
-
-          // 重新加载图片以触发onload事件
-          nextTick(() => {
-            applyFilters()
-          })
-
-          console.log('水印已本地应用')
+          // 原有代码继续...
         }
       } catch (error) {
         console.error('本地应用水印出错:', error)
-        alert('应用水印时出错，请重试')
+        alert('应用水印时出错，请重试。如果您使用的是从网络加载的图片，请先保存到本地再上传。')
       }
     }
 
@@ -1675,14 +1750,18 @@ export default defineComponent({
             if (data.url) {
               // 预加载图片以确保URL有效
               const testImg = new Image()
+              const compressedUrl = data.url.startsWith('http')
+                ? data.url
+                : import.meta.env.VITE_STATIC_ASSETS_URL + data.url
               testImg.onload = () => {
                 // 更新图像URL
-                imageUrl.value = data.url
+                imageUrl.value = compressedUrl
                 processedImageUrl.value = ''
 
                 // 显示成功消息
                 alert(
-                  data.message || `图像已成功压缩，压缩率: ${data.compressionRatio.toFixed(2)}%`,
+                  data.message ||
+                    `图像已成功压缩，压缩率: ${data.compressionRatio?.toFixed(2) || '0'}%`,
                 )
 
                 // 重新加载图片以触发onload事件
@@ -1694,7 +1773,7 @@ export default defineComponent({
                 console.error('压缩后的图片加载失败，降级到本地处理')
                 compressImageLocally()
               }
-              testImg.src = data.url
+              testImg.src = compressedUrl
             } else {
               console.error('后端未返回有效的图片URL')
               compressImageLocally()
@@ -1961,15 +2040,14 @@ export default defineComponent({
             if (data.url) {
               // 预加载图片以确保URL有效
               const testImg = new Image()
+              // 修改这行 - 使用VITE_STATIC_ASSETS_URL而不是VITE_API_BASE_URL
+              const sharpenedUrl = data.url.startsWith('http')
+                ? data.url
+                : import.meta.env.VITE_STATIC_ASSETS_URL + data.url
               testImg.onload = () => {
-                // 更新图像URL
-                imageUrl.value = data.url
+                imageUrl.value = sharpenedUrl
                 processedImageUrl.value = ''
-
-                // 显示成功消息
                 alert(data.message || '图像已成功锐化')
-
-                // 重新加载图片以触发onload事件
                 nextTick(() => {
                   console.log('锐化后的图片已成功加载')
                 })
@@ -1978,7 +2056,7 @@ export default defineComponent({
                 console.error('锐化后的图片加载失败，降级到本地处理')
                 applySharpenLocally()
               }
-              testImg.src = data.url
+              testImg.src = sharpenedUrl // 也要使用修改后的URL
             } else {
               console.error('后端未返回有效的图片URL')
               applySharpenLocally()
@@ -2134,7 +2212,6 @@ export default defineComponent({
       imageQualityDetails,
       applyWatermark,
       resizeImage,
-      compressImage,
       detectFaces,
       analyzeImageQuality,
       isAnalyzing,

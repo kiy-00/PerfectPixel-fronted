@@ -54,7 +54,7 @@
       </div>
 
       <!-- 添加调试区域 -->
-      <div
+      <!-- <div
         v-if="isDevelopment"
         class="container mx-auto mt-8 p-4 bg-error bg-opacity-10 rounded-lg"
       >
@@ -91,7 +91,6 @@
           </div>
         </div>
 
-        <!-- 强制显示按钮（仅用于测试） -->
         <div class="mt-4 p-4 border border-error rounded-lg">
           <h4 class="font-bold mb-2">调试控制:</h4>
           <div class="flex space-x-4 mb-2">
@@ -110,7 +109,7 @@
           </div>
           <p>当前强制所有权状态: {{ forceOwnership ? '开启' : '关闭' }}</p>
         </div>
-      </div>
+      </div> -->
 
       <!-- 主要内容区域 -->
       <div class="container mx-auto px-4 mt-8">
@@ -316,11 +315,11 @@
               forceOwnership
             "
           >
-            <div v-if="isDevelopment" class="bg-yellow-100 p-2 mb-4 rounded">
+            <!-- <div v-if="isDevelopment" class="bg-yellow-100 p-2 mb-4 rounded">
               <p>调试: 显示按钮区域 - 条件成立</p>
               <p>作品集摄影师ID: {{ portfolio.photographerId }}</p>
               <p>用户摄影师ID: {{ userStore.photographerId }}</p>
-            </div>
+            </div> -->
 
             <h2 class="text-lg font-bold text-neutral-dark mb-4">作品集操作</h2>
             <div class="flex space-x-4">
